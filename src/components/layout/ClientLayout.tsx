@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { AnnouncementBanner } from '@/components/layout/AnnouncementBanner';
+import { CookieConsent } from '@/components/layout/CookieConsent';
 
 // Lazy load modal/drawer components - only load when needed
 const CartDrawer = dynamic(
@@ -73,6 +74,9 @@ export function ClientLayout({ children }: ClientLayoutProps) {
       <Suspense fallback={null}>
         <StyleAssistant />
       </Suspense>
+      
+      {/* Cookie Consent Banner */}
+      <CookieConsent />
     </div>
   );
 }

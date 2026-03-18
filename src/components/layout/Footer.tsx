@@ -194,15 +194,21 @@ export function Footer() {
           <p className="text-white/40 text-sm">
             © {new Date().getFullYear()} {settings.storeName || 'Clothing Ctrl'}. All rights reserved.
           </p>
-          <div className="flex gap-6">
-            <Link href="#" className="text-white/40 hover:text-white/60 text-sm transition-colors">
+          <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+            <Link href="/privacy" className="text-white/40 hover:text-white/60 text-sm transition-colors">
               Privacy Policy
             </Link>
-            <Link href="#" className="text-white/40 hover:text-white/60 text-sm transition-colors">
+            <Link href="/terms" className="text-white/40 hover:text-white/60 text-sm transition-colors">
               Terms of Service
             </Link>
-            <Link href="#" className="text-white/40 hover:text-white/60 text-sm transition-colors">
-              Shipping Info
+            <Link href="/returns-policy" className="text-white/40 hover:text-white/60 text-sm transition-colors">
+              Returns Policy
+            </Link>
+            <Link href="/faq" className="text-white/40 hover:text-white/60 text-sm transition-colors">
+              FAQ
+            </Link>
+            <Link href="/contact" className="text-white/40 hover:text-white/60 text-sm transition-colors">
+              Contact
             </Link>
           </div>
         </div>

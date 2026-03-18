@@ -366,3 +366,79 @@ model SyncEvent {
   data      String   // JSON data
   createdAt DateTime @default(now())
 }
+
+// Order Returns
+model OrderReturn {
+  id             String   @id @default(cuid())
+  orderId        String
+  orderNumber    String   // For easy reference
+  customerId     String?
+  customerEmail  String   // Customer contact
+  customerName   String?
+  reason         String   // WRONG_SIZE, DEFECTIVE, NOT_AS_DESCRIBED, CHANGED_MIND, OTHER
+  reasonDetails  String?  // Additional details
+  items          String   // JSON array of items being returned
+  status         String   @default("PENDING") // PENDING, APPROVED, REJECTED, PROCESSING, COMPLETED
+  refundMethod   String?  // ORIGINAL_PAYMENT, STORE_CREDIT
+  refundAmount   Float?
+  adminNotes     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// Discount/Coupon codes
+model Discount {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  description     String?
+  type            String    @default("PERCENTAGE") // PERCENTAGE, FIXED_AMOUNT
+  value           Float     // Percentage or fixed amount
+  minOrderAmount  Float?    // Minimum order amount to apply
+  maxUses         Int?      // Maximum number of uses
+  currentUses     Int       @default(0)
+  startDate       DateTime?
+  endDate         DateTime?
+  isActive        Boolean   @default(true)
+  appliesTo       String    @default("ALL") // ALL, SPECIFIC_PRODUCTS, SPECIFIC_CATEGORIES
+  productIds      String?   // JSON array of product IDs if appliesTo is SPECIFIC_PRODUCTS
+  categoryIds     String?   // JSON array of category IDs if appliesTo is SPECIFIC_CATEGORIES
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// FAQ items
+model FAQ {
+  id          String   @id @default(cuid())
+  question    String
+  answer      String
+  category    String   @default("GENERAL") // GENERAL, SHIPPING, RETURNS, PAYMENT, PRODUCTS
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Contact form submissions
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  status    String   @default("NEW") // NEW, READ, REPLIED, CLOSED
+  reply     String?  // Admin reply
+  repliedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Cookie consent logs
+model CookieConsent {
+  id           String   @id @default(cuid())
+  sessionId    String   @unique
+  preferences  String   // JSON of cookie preferences
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+}
