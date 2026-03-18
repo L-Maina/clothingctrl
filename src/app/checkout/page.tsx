@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, CreditCard, Truck, Shield, Check, Loader2, MapPin, Gift, Download, X, Sparkles, AlertCircle, Tag, Percent } from 'lucide-react';
+import { SiVisa, SiMastercard, SiPaypal } from 'react-icons/si';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useCartStore, useCurrencyStore, useAuthStore, useCustomerStore } from '@/lib/store';
@@ -715,21 +716,9 @@ export default function CheckoutPage() {
                         : "border-white/10 hover:border-white/30"
                     )}
                   >
-                    <div className="flex gap-2 items-center justify-center">
-                      {/* Visa Logo */}
-                      <div className="h-7 w-11 bg-white rounded flex items-center justify-center px-1.5">
-                        <svg viewBox="0 0 60 20" className="h-4 w-9">
-                          <path fill="#1434CB" d="M23 2L18 18H14L11 7C10.8 6.2 10.5 5.8 9.8 5.5C8.5 4.9 6.5 4.4 4.7 4.1L4.8 3.5H11C12.2 3.5 13.2 4.3 13.5 5.7L15.2 14L20 3.5H23V2ZM35 13C35 10.3 31 10.1 31 9C31 8.7 31.3 8.2 32.1 8.1C32.5 8 34 8 35.1 9L36.1 7C35.1 6.5 33.8 6.1 32.3 6.1C29.5 6.1 27.6 7.6 27.6 9.6C27.6 11.2 29 12 30.2 12.6C31.4 13.2 31.8 13.5 31.8 14.1C31.8 14.9 30.8 15.2 29.9 15.2C28.5 15.2 27.6 14.5 27 14.2L26 16.3C27 16.8 28.3 17.1 29.8 17.1C32.8 17.1 34.8 15.6 35 13ZM44.5 18H48L45.5 2H42.5C41.5 2 40.7 2.6 40.4 3.5L35.8 18H39L39.6 16H43.8L44.5 18ZM40.8 13.5L42.5 7.5L43.5 13.5H40.8ZM26 2L23.5 18H20L22.5 2H26Z"/>
-                        </svg>
-                      </div>
-                      {/* Mastercard Logo */}
-                      <div className="h-7 w-11 bg-white rounded flex items-center justify-center overflow-hidden">
-                        <svg viewBox="0 0 48 32" className="h-5 w-8">
-                          <circle cx="16" cy="16" r="10" fill="#EB001B"/>
-                          <circle cx="32" cy="16" r="10" fill="#F79E1B"/>
-                          <path d="M24 8.5C26.2 10.3 27.5 13 27.5 16C27.5 19 26.2 21.7 24 23.5C21.8 21.7 20.5 19 20.5 16C20.5 13 21.8 10.3 24 8.5Z" fill="#FF5F00"/>
-                        </svg>
-                      </div>
+                    <div className="flex gap-3 items-center justify-center">
+                      <SiVisa className="w-12 h-8 text-[#1A1F71]" />
+                      <SiMastercard className="w-12 h-8" />
                     </div>
                     <span className="text-white font-medium text-sm">Card</span>
                   </button>
@@ -745,14 +734,7 @@ export default function CheckoutPage() {
                         : "border-white/10 hover:border-white/30"
                     )}
                   >
-                    <div className="h-7 w-16 bg-white rounded flex items-center justify-center px-2">
-                      <svg viewBox="0 0 100 24" className="h-4 w-14">
-                        <path fill="#003087" d="M12.5 4H7C6.5 4 6 4.4 5.9 4.9L3.5 19C3.4 19.3 3.6 19.5 3.9 19.5H6.5C7 19.5 7.4 19.1 7.5 18.6L8.1 14.6C8.2 14.1 8.6 13.7 9.2 13.7H11C14.5 13.7 16.5 11.9 17 8.5C17.4 5.8 15.5 4 12.5 4ZM13.5 8.8C13.2 10.6 11.8 10.6 10.5 10.6H9.7L10.3 6.8C10.3 6.5 10.6 6.3 10.9 6.3H11.3C12.2 6.3 13 6.3 13.5 6.8C13.8 7.2 13.8 7.8 13.5 8.8Z"/>
-                        <path fill="#003087" d="M26.5 8.5H24C23.7 8.5 23.4 8.7 23.4 9L23.3 9.8L23.1 9.5C22.4 8.5 20.9 8.2 19.4 8.2C16 8.2 13.1 10.8 12.5 14.4C12.2 16.2 12.6 17.9 13.6 19.1C14.5 20.1 15.8 20.6 17.3 20.6C19.8 20.6 21.2 19 21.2 19L21.1 19.8C21 20.1 21.2 20.4 21.5 20.4H23.8C24.3 20.4 24.7 20 24.8 19.5L26.2 9.2C26.2 8.8 26 8.5 26.5 8.5ZM22 14.5C21.7 16.2 20.4 17.4 18.7 17.4C17.8 17.4 17.1 17.1 16.6 16.5C16.1 15.9 15.9 15 16.1 14C16.4 12.3 17.7 11.1 19.4 11.1C20.3 11.1 21 11.4 21.5 12C22 12.6 22.2 13.5 22 14.5Z"/>
-                        <path fill="#009CDE" d="M41.5 8.5H39C38.7 8.5 38.4 8.7 38.4 9L38.3 9.8L38.1 9.5C37.4 8.5 35.9 8.2 34.4 8.2C31 8.2 28.1 10.8 27.5 14.4C27.2 16.2 27.6 17.9 28.6 19.1C29.5 20.1 30.8 20.6 32.3 20.6C34.8 20.6 36.2 19 36.2 19L36.1 19.8C36 20.1 36.2 20.4 36.5 20.4H38.8C39.3 20.4 39.7 20 39.8 19.5L41.2 9.2C41.2 8.8 41 8.5 41.5 8.5ZM37 14.5C36.7 16.2 35.4 17.4 33.7 17.4C32.8 17.4 32.1 17.1 31.6 16.5C31.1 15.9 30.9 15 31.1 14C31.4 12.3 32.7 11.1 34.4 11.1C35.3 11.1 36 11.4 36.5 12C37 12.6 37.2 13.5 37 14.5Z"/>
-                        <path fill="#003087" d="M57.5 8.5H55C54.6 8.5 54.2 8.7 54 9.1L49.5 16.5L47.5 9.4C47.4 8.9 46.9 8.5 46.4 8.5H44C43.7 8.5 43.4 8.8 43.5 9.2L47.2 19.5L43.6 24.9C43.4 25.2 43.6 25.6 44 25.6H46.5C46.9 25.6 47.3 25.4 47.5 25L58 9.2C58.2 8.9 58 8.5 57.5 8.5Z"/>
-                      </svg>
-                    </div>
+                    <SiPaypal className="w-16 h-8 text-[#003087]" />
                     <span className="text-white font-medium text-sm">PayPal</span>
                   </button>
                 </div>
