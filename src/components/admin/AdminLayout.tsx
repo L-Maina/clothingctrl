@@ -26,6 +26,9 @@ import {
   AlertTriangle,
   MessageSquare,
   MessageCircle,
+  ArrowLeftRight,
+  Tag,
+  HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -51,11 +54,14 @@ const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Products', href: '/admin/products', icon: Package },
   { name: 'Orders', href: '/admin/orders', icon: ShoppingBag },
+  { name: 'Returns', href: '/admin/returns', icon: ArrowLeftRight },
   { name: 'Customers', href: '/admin/customers', icon: Users },
+  { name: 'Discounts', href: '/admin/discounts', icon: Tag },
   { name: 'Drops', href: '/admin/drops', icon: Clock },
   { name: 'Subscribers', href: '/admin/subscribers', icon: Mail },
   { name: 'Reviews', href: '/admin/reviews', icon: MessageSquare },
   { name: 'Community', href: '/admin/community', icon: ImageIcon },
+  { name: 'FAQ', href: '/admin/faq', icon: HelpCircle },
   { name: 'Social', href: '/admin/social', icon: Share2 },
   { name: 'Analytics', href: '/admin/analytics', icon: TrendingUp },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
