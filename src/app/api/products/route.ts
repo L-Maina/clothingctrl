@@ -5,12 +5,14 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
+    const categoryId = searchParams.get('categoryId');
     const featured = searchParams.get('featured');
     const isNew = searchParams.get('new') || searchParams.get('isNew');
     const limited = searchParams.get('limited');
     const slug = searchParams.get('slug');
     const id = searchParams.get('id');
     const limit = searchParams.get('limit');
+    const exclude = searchParams.get('exclude');
 
     // Get single product by ID or slug
     if (id || slug) {
@@ -29,7 +31,12 @@ export async function GET(request: Request) {
 
     const where: Record<string, unknown> = {};
     
-    // Filter by category
+    // Exclude specific product
+    if (exclude) {
+      where.NOT = { id: exclude };
+    }
+    
+    // Filter by category (by slug)
     if (category) {
       const categoryRecord = await db.category.findFirst({
         where: { slug: category },
@@ -37,6 +44,11 @@ export async function GET(request: Request) {
       if (categoryRecord) {
         where.categoryId = categoryRecord.id;
       }
+    }
+    
+    // Filter by categoryId directly
+    if (categoryId) {
+      where.categoryId = categoryId;
     }
     
     // Filter by featured

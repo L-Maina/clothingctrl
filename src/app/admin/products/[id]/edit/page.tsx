@@ -555,7 +555,6 @@ export default function EditProductPage() {
                       <SelectContent className="bg-zinc-800 border-white/10">
                         <SelectItem value="NEW" className="text-white hover:bg-white/5">New</SelectItem>
                         <SelectItem value="THRIFTED" className="text-white hover:bg-white/5">Thrifting</SelectItem>
-                        <SelectItem value="CUSTOM" className="text-white hover:bg-white/5">Custom</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

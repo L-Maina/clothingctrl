@@ -149,10 +149,8 @@ export default function AdminProducts() {
         return <Badge className="bg-green-500/10 text-green-500 border-green-500/20">New</Badge>;
       case 'THRIFTED':
         return <Badge className="bg-purple-500/10 text-purple-500 border-purple-500/20">Thrifting</Badge>;
-      case 'CUSTOM':
-        return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Custom</Badge>;
       default:
-        return <Badge variant="outline">Unknown</Badge>;
+        return <Badge variant="outline">{condition}</Badge>;
     }
   };
 
@@ -237,7 +235,6 @@ export default function AdminProducts() {
                 <SelectItem value="all">All Conditions</SelectItem>
                 <SelectItem value="NEW">New</SelectItem>
                 <SelectItem value="THRIFTED">Thrifting</SelectItem>
-                <SelectItem value="CUSTOM">Custom</SelectItem>
               </SelectContent>
             </Select>
             <Select value={stockFilter} onValueChange={setStockFilter}>

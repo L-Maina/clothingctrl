@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Eye, Heart, RotateCw, Star } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useCartStore, useUIStore, useCurrencyStore, useWishlistStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
@@ -167,11 +168,12 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
 
   return (
     <div className="group">
-      <div
-        className="relative aspect-[3/4] bg-zinc-900 overflow-hidden cursor-pointer"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
+      <Link href={`/product/${product.slug}`} className="block">
+        <div
+          className="relative aspect-[3/4] bg-zinc-900 overflow-hidden cursor-pointer"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
         {/* Back Image - Shows on hover (rendered first, underneath) */}
         {hasMultipleImages && (
           <motion.img
@@ -241,11 +243,6 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
               THRIFTED
             </span>
           )}
-          {product.condition === 'CUSTOM' && (
-            <span className="bg-blue-500 text-white text-xs font-bold px-3 py-1 tracking-wider">
-              CUSTOM
-            </span>
-          )}
         </div>
 
         {/* Quick Actions - Top Left - Always visible on mobile, hover on desktop */}
@@ -305,7 +302,8 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
             ADD TO CART
           </Button>
         </motion.div>
-      </div>
+        </div>
+      </Link>
 
       {/* Product Info */}
       <div className="mt-4 px-1">

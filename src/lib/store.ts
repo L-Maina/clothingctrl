@@ -202,6 +202,7 @@ interface CustomerStore {
   loyaltyTier: string;
   setCustomer: (email: string, name?: string) => void;
   addLoyaltyPoints: (points: number) => void;
+  deductLoyaltyPoints: (points: number) => void;
   logout: () => void;
 }
 
@@ -218,6 +219,16 @@ export const useCustomerStore = create<CustomerStore>()(
       addLoyaltyPoints: (points) =>
         set((state) => {
           const newPoints = state.loyaltyPoints + points;
+          let tier = 'BRONZE';
+          if (newPoints >= 1000) tier = 'PLATINUM';
+          else if (newPoints >= 500) tier = 'GOLD';
+          else if (newPoints >= 200) tier = 'SILVER';
+          return { loyaltyPoints: newPoints, loyaltyTier: tier };
+        }),
+      
+      deductLoyaltyPoints: (points) =>
+        set((state) => {
+          const newPoints = Math.max(0, state.loyaltyPoints - points);
           let tier = 'BRONZE';
           if (newPoints >= 1000) tier = 'PLATINUM';
           else if (newPoints >= 500) tier = 'GOLD';

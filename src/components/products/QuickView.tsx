@@ -293,12 +293,11 @@ export function QuickView() {
                   </h2>
 
                   {/* Condition Badge */}
-                  {product.condition && (
+                  {product.condition && product.condition !== 'NEW' && (
                     <span className={cn(
                       "inline-block text-xs font-bold px-3 py-1 tracking-wider mb-4",
-                      product.condition === 'NEW' ? "bg-amber-400 text-black" :
                       product.condition === 'THRIFTED' ? "bg-purple-500 text-white" :
-                      "bg-blue-500 text-white"
+                      "bg-zinc-600 text-white"
                     )}>
                       {product.condition as string}
                     </span>

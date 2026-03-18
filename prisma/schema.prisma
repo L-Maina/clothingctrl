@@ -242,6 +242,9 @@ model AdminUser {
   passwordChangedAt DateTime?
   
   role              String    @default("ADMIN") // ADMIN, SUPER_ADMIN
+  permissions       String?   // JSON array of permissions: ["products", "orders", "customers", "discounts", "returns", "settings", "admins"]
+  
+  isActive          Boolean   @default(true)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 }

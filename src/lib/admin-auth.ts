@@ -51,20 +51,12 @@ export const useAdminAuth = create<AdminAuthStore>()(
           
           const admin = data.admin as AdminUser;
           
-          // Determine onboarding step
-          let onboardingStep: OnboardingStep | null = null;
-          if (admin.isTemporaryPassword) {
-            onboardingStep = 'password';
-          } else if (!admin.notificationEmail) {
-            onboardingStep = 'email';
-          } else if (!admin.emailVerified) {
-            onboardingStep = 'verify';
-          }
-          
+          // ONBOARDING PAUSED - Skip onboarding steps
+          // Directly set authenticated without onboarding
           set({ 
             isAdminAuthenticated: true, 
             adminUser: admin,
-            onboardingStep,
+            onboardingStep: null, // Always null - no onboarding
           });
           
           return { success: true };

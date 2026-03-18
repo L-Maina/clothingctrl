@@ -536,3 +536,235 @@ Replace the hardcoded shipping costs with configurable three-zone shipping syste
 - Free shipping threshold is optional (leave empty to disable)
 
 #### Lint Status: ✅ All checks pass
+
+---
+## Task ID: 8 - Dynamic Free Shipping Threshold Fix
+### Work Task
+Fix hardcoded free shipping threshold (10,000 KES) in CartDrawer component. The admin can configure the free shipping threshold in settings, but the cart drawer was using a hardcoded value instead of fetching it from the API.
+
+### Work Summary
+
+#### Files Modified:
+
+1. **`/src/components/cart/CartDrawer.tsx`** - Dynamic Shipping Threshold
+   - Added `useState` and `useEffect` imports
+   - Added `Loader2` icon import (for potential loading states)
+   - Created `shippingSettings` state with all shipping fields:
+     - `shippingNairobi`
+     - `shippingKenya`
+     - `shippingInternational`
+     - `shippingFreeThreshold`
+   - Added useEffect to fetch settings from `/api/admin/settings` on mount
+   - Replaced hardcoded `freeShippingThreshold = 10000` with dynamic value from state
+   - Updated shipping calculation to handle `null` threshold (no free shipping)
+   - Updated free shipping message to only show when threshold is set and not met
+
+### Key Changes:
+- **Before**: `const freeShippingThreshold = 10000;` (hardcoded)
+- **After**: Fetches from API, supports `null` value (disabled free shipping)
+
+### Customer Experience:
+- Cart drawer now shows accurate free shipping threshold from admin settings
+- If admin disables free shipping (null threshold), the "Add X more for free shipping" message won't show
+- Shipping cost defaults to Kenya shipping rate in cart drawer
+
+### Integration Notes:
+- Checkout page already had dynamic shipping settings (unchanged)
+- Admin settings page already supports configuring the threshold (unchanged)
+- Orders API already uses dynamic threshold (unchanged)
+
+#### Lint Status: ✅ All checks pass
+
+---
+## Task ID: 9 - Remove Custom Made Condition & Backup Folder
+### Work Task
+1. Remove "Custom Made" from product conditions - it should be a brand, not a condition
+2. Remove the Clothing-Store-Web-App backup folder
+
+### Work Summary
+
+#### Files Modified:
+
+1. **`/src/components/products/ProductCard.tsx`** - Removed CUSTOM_MADE badge display
+   - Removed the condition badge for CUSTOM_MADE products
+
+2. **`/src/components/products/QuickView.tsx`** - Updated condition badge
+   - Now only shows condition badge for non-NEW conditions
+   - Simplified to just show THRIFTED badge (NEW is default, no badge needed)
+
+3. **`/src/components/sections/ShopSection.tsx`** - Updated filters
+   - Removed 'Custom Made' from conditionFilters array
+   - Added 'Custom' to brandFilters array
+   - Added 'Custom' to knownBrands list for "Other" filter
+
+4. **`/src/app/shop/page.tsx`** - Updated shop filters
+   - Removed 'Custom Made' from conditionFilters array  
+   - Added 'Custom' to brandFilters array
+   - Updated knownBrands list to include 'Custom'
+
+5. **`/src/app/admin/products/page.tsx`** - Updated admin product filters
+   - Removed CUSTOM_MADE from condition filter dropdown
+   - Updated getConditionBadge function to handle unknown conditions
+
+6. **`/src/app/admin/products/new/page.tsx`** - Updated new product form
+   - Removed "Custom Made (Handmade/Bespoke)" option from condition select
+
+7. **`/src/app/admin/products/[id]/edit/page.tsx`** - Updated edit product form
+   - Removed "Custom Made (Handmade/Bespoke)" option from condition select
+
+8. **`/src/app/api/seed/route.ts`** - Updated seed data
+   - Changed all CUSTOM_MADE products to use condition: 'NEW' with brand: 'Custom'
+   - Products affected:
+     - Custom Hand-Painted Tee
+     - Custom Embroidered Jacket
+     - Nike Air Force 1 Custom
+     - Custom Name Chain
+
+#### Files Deleted:
+- **`/home/z/my-project/Clothing-Store-Web-App/`** - Removed backup folder
+
+### Key Changes:
+- **Before**: "Custom Made" was a condition like NEW or THRIFTED
+- **After**: "Custom" is now a brand, products with custom designs use condition: NEW
+
+### Customer Experience:
+- Custom products now appear under the "Custom" brand filter
+- Condition filter now only shows: All, New, Thrifting
+- Custom products display as "New" condition with "Custom" brand
+
+### Admin Experience:
+- When adding/editing products, condition options are: New, Thrifting
+- Brand can be set to "Custom" for handmade/bespoke items
+
+#### Lint Status: ✅ All checks pass
+
+---
+## Task ID: 10 - Add Missing Features
+### Work Task
+Implement missing features identified in the project review:
+1. Product Detail Page (/product/[slug])
+2. Loyalty Points Redemption at Checkout
+3. Order Cancellation for Customers
+4. Related Products Section
+5. Size Guide Modal
+
+### Work Summary
+
+#### Files Created:
+
+1. **`/src/app/product/[slug]/page.tsx`** - Product Detail Page
+   - Full product view with image gallery
+   - Color and size selection
+   - Quantity selector
+   - Add to cart and wishlist functionality
+   - Share button with native share API
+   - Customer reviews section
+   - Related products carousel (products from same category)
+   - Size guide modal with charts for clothes, shoes, and accessories
+   - Trust badges (free shipping, easy returns, secure payment)
+   - Loyalty points earning preview
+   - SEO-friendly URL structure
+
+2. **`/src/app/api/orders/cancel/route.ts`** - Order Cancellation API
+   - POST endpoint to cancel pending orders
+   - Validates order belongs to customer
+   - Only allows cancellation of PENDING orders
+   - Restores inventory for limited quantity products
+   - Emits sync event for real-time updates
+
+#### Files Modified:
+
+1. **`/src/app/api/products/route.ts`** - Products API Updates
+   - Added `categoryId` filter for fetching products by category
+   - Added `exclude` parameter to exclude specific products (for related products)
+   - Supports fetching related products from same category
+
+2. **`/src/lib/store.ts`** - Customer Store Updates
+   - Added `deductLoyaltyPoints()` function to subtract points when redeemed
+   - Updated tier calculation to reflect new point totals
+
+3. **`/src/app/checkout/page.tsx`** - Checkout Page Updates
+   - Added loyalty points redemption UI
+   - Points slider with "Use all available points" quick action
+   - Shows points discount in order summary
+   - Sends points used to order API
+   - Deducts redeemed points and adds earned points on order completion
+
+4. **`/src/app/api/orders/route.ts`** - Orders API Updates
+   - Accepts `pointsUsed` parameter for loyalty redemption
+   - Calculates points discount (1 point = KSh 1)
+   - Deducts used points from customer loyalty balance
+   - Adds earned points after deduction
+   - Updates loyalty tier based on new balance
+   - Returns `pointsRedeemed` in order response
+
+5. **`/src/app/account/orders/page.tsx`** - Orders Page Updates
+   - Added "Cancel" button for pending orders
+   - Cancel confirmation dialog with warning
+   - Calls `/api/orders/cancel` endpoint
+   - Refreshes order list after cancellation
+
+### Feature Details:
+
+#### 1. Product Detail Page
+- **URL**: `/product/[slug]`
+- **Features**:
+  - Image gallery with thumbnails
+  - Brand and condition badges
+  - Price with discount percentage
+  - Color picker with visual swatches
+  - Size selection with size guide link
+  - Quantity controls
+  - Add to cart with loading state
+  - Wishlist toggle
+  - Share (native share API or copy link)
+  - Reviews with star ratings
+  - Related products (4 items from same category)
+  - Loyalty points earning preview for logged-in users
+
+#### 2. Loyalty Points Redemption
+- **Value**: 1 point = KSh 1
+- **Location**: Checkout order summary
+- **UI**: Purple-themed card with slider and input
+- **Eligibility**: Must be logged in with available points
+- **Max**: Cannot exceed order subtotal
+- **Process**:
+  1. Customer toggles "Use Loyalty Points"
+  2. Selects amount via slider or input
+  3. Discount applied to order total
+  4. Points deducted after successful order
+
+#### 3. Order Cancellation
+- **Eligibility**: Only PENDING orders
+- **Process**:
+  1. Customer clicks "Cancel" button on order
+  2. Confirmation dialog appears
+  3. On confirm, order status changes to CANCELLED
+  4. Limited inventory restored
+- **Restrictions**: Processing/Shipped/Delivered orders cannot be cancelled
+
+#### 4. Related Products
+- **Display**: 4 products from same category
+- **Excludes**: Current product
+- **Location**: Below product details
+
+#### 5. Size Guide
+- **Categories**: Clothes, Shoes, Accessories
+- **Clothes Chart**: Size, Chest, Waist, Hips (inches)
+- **Shoes Chart**: US, UK, EU, CM conversions
+- **Accessories Chart**: Belts, Chains, Hats sizing
+- **Access**: Via "Size Guide" link near size selection
+
+### Customer Experience Improvements:
+- Shareable product URLs for social sharing
+- Earn AND redeem loyalty points at checkout
+- Cancel mistakes before order processes
+- Find similar products easily
+- Accurate sizing with comprehensive charts
+
+### Admin Experience:
+- Related products automatically shown (no manual setup)
+- Order cancellations tracked in order notes
+- Inventory restored on cancellation
+
+#### Lint Status: ✅ All checks pass

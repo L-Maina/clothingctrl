@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, CreditCard, Truck, Shield, Check, Loader2, MapPin, Gift, Download, X, Sparkles, AlertCircle } from 'lucide-react';
+import { ArrowLeft, CreditCard, Truck, Shield, Check, Loader2, MapPin, Gift, Download, X, Sparkles, AlertCircle, Tag, Percent } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useCartStore, useCurrencyStore, useAuthStore, useCustomerStore } from '@/lib/store';
@@ -20,6 +20,10 @@ interface OrderResult {
   orderNumber: string;
   status: string;
   subtotal: number;
+  discount: {
+    code: string;
+    amount: number;
+  } | null;
   shipping: number;
   tax: number;
   total: number;
@@ -49,7 +53,7 @@ export default function CheckoutPage() {
   const { items, getSubtotal, clearCart } = useCartStore();
   const { formatPrice } = useCurrencyStore();
   const { isLoggedIn, user, openLoginModal } = useAuthStore();
-  const { addLoyaltyPoints } = useCustomerStore();
+  const { addLoyaltyPoints, deductLoyaltyPoints } = useCustomerStore();
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -58,6 +62,22 @@ export default function CheckoutPage() {
   const [showGuestPrompt, setShowGuestPrompt] = useState(false);
   const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // Discount code state
+  const [discountCode, setDiscountCode] = useState('');
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    code: string;
+    type: string;
+    value: number;
+    discountAmount: number;
+  } | null>(null);
+  const [validatingDiscount, setValidatingDiscount] = useState(false);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  
+  // Loyalty points redemption state
+  const [usePoints, setUsePoints] = useState(false);
+  const [pointsToRedeem, setPointsToRedeem] = useState(0);
+  const POINTS_VALUE = 1; // 1 point = KSh 1
   
   // Shipping settings from API
   const [shippingSettings, setShippingSettings] = useState<{
@@ -189,9 +209,53 @@ export default function CheckoutPage() {
 
   const subtotal = getSubtotal();
   const shipping = calculateShipping();
-  const tax = subtotal * 0.16;
-  const total = subtotal + shipping + tax;
+  const discountAmount = appliedDiscount?.discountAmount || 0;
+  
+  // Calculate loyalty points redemption
+  const availablePoints = user?.loyaltyPoints || 0;
+  const maxPointsValue = Math.min(availablePoints, subtotal - discountAmount);
+  const pointsDiscount = usePoints ? Math.min(pointsToRedeem, maxPointsValue) : 0;
+  
+  const taxableAmount = Math.max(0, subtotal - discountAmount - pointsDiscount);
+  const tax = taxableAmount * 0.16;
+  const total = subtotal - discountAmount - pointsDiscount + shipping + tax;
   const loyaltyPointsEarned = Math.floor(total / 100);
+  
+  // Apply discount code
+  const handleApplyDiscount = async () => {
+    if (!discountCode.trim()) return;
+    
+    setValidatingDiscount(true);
+    setDiscountError(null);
+    
+    try {
+      const response = await fetch(`/api/discounts?code=${encodeURIComponent(discountCode)}&amount=${subtotal}`);
+      const data = await response.json();
+      
+      if (data.valid) {
+        setAppliedDiscount({
+          code: data.code,
+          type: data.type,
+          value: data.value,
+          discountAmount: data.discountAmount,
+        });
+        setDiscountCode('');
+        setDiscountError(null);
+      } else {
+        setDiscountError(data.error || 'Invalid discount code');
+        setAppliedDiscount(null);
+      }
+    } catch (error) {
+      setDiscountError('Failed to validate code');
+    } finally {
+      setValidatingDiscount(false);
+    }
+  };
+  
+  const removeDiscount = () => {
+    setAppliedDiscount(null);
+  setDiscountError(null);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -223,6 +287,8 @@ export default function CheckoutPage() {
         },
         paymentMethod,
         isGuestOrder: !isLoggedIn,
+        discountCode: appliedDiscount?.code || null,
+        pointsUsed: pointsDiscount > 0 ? pointsToRedeem : 0,
       };
 
       const response = await fetch('/api/orders', {
@@ -239,6 +305,11 @@ export default function CheckoutPage() {
 
       // Update loyalty points in local store if logged in
       if (isLoggedIn && data.order.loyaltyPointsEarned) {
+        // First deduct the points used
+        if (pointsDiscount > 0) {
+          deductLoyaltyPoints(pointsToRedeem);
+        }
+        // Then add the points earned
         addLoyaltyPoints(data.order.loyaltyPointsEarned);
       }
 
@@ -293,6 +364,12 @@ export default function CheckoutPage() {
                   <span className="text-white/60">Subtotal</span>
                   <span className="text-white">{formatPrice(orderResult.subtotal)}</span>
                 </div>
+                {orderResult.discount && orderResult.discount.amount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-green-400">Discount ({orderResult.discount.code})</span>
+                    <span className="text-green-400">-{formatPrice(orderResult.discount.amount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-white/60">Shipping</span>
                   <span className="text-white">{orderResult.shipping === 0 ? 'FREE' : formatPrice(orderResult.shipping)}</span>
@@ -638,23 +715,21 @@ export default function CheckoutPage() {
                         : "border-white/10 hover:border-white/30"
                     )}
                   >
-                    <div className="flex gap-1 items-center">
+                    <div className="flex gap-2 items-center justify-center">
                       {/* Visa Logo */}
-                      <svg className="h-8 w-10" viewBox="0 0 48 32" fill="none">
-                        <rect width="48" height="32" rx="4" fill="#1A1F71"/>
-                        <path d="M19.5 21H17L18.5 11H21L19.5 21Z" fill="white"/>
-                        <path d="M28 11L25.5 18L25 15.5L24 12C24 12 23.8 11 22.5 11H18.5L18.4 11.2C18.4 11.2 20 11.5 21.8 12.5L24 21H26.5L30.5 11H28Z" fill="white"/>
-                        <path d="M32 21L32.5 18L30 18L29.5 21H32Z" fill="white"/>
-                        <path d="M34.5 11C33.5 11 33 11.8 33 11.8L29 21H31.5L32 19.5H35L35.2 21H37.5L35.5 11H34.5ZM32.5 17.5L33.5 14.5L34 17.5H32.5Z" fill="white"/>
-                        <path d="M15 11L12.5 18L12.2 16.5L11 12C11 12 10.8 11 9.5 11H5.1L5 11.2C5 11.2 7 11.6 9.2 13C11 14 12 15.5 12.5 17L11 21H13.5L16 11H15Z" fill="white"/>
-                      </svg>
+                      <div className="h-7 w-11 bg-white rounded flex items-center justify-center px-1.5">
+                        <svg viewBox="0 0 60 20" className="h-4 w-9">
+                          <path fill="#1434CB" d="M23 2L18 18H14L11 7C10.8 6.2 10.5 5.8 9.8 5.5C8.5 4.9 6.5 4.4 4.7 4.1L4.8 3.5H11C12.2 3.5 13.2 4.3 13.5 5.7L15.2 14L20 3.5H23V2ZM35 13C35 10.3 31 10.1 31 9C31 8.7 31.3 8.2 32.1 8.1C32.5 8 34 8 35.1 9L36.1 7C35.1 6.5 33.8 6.1 32.3 6.1C29.5 6.1 27.6 7.6 27.6 9.6C27.6 11.2 29 12 30.2 12.6C31.4 13.2 31.8 13.5 31.8 14.1C31.8 14.9 30.8 15.2 29.9 15.2C28.5 15.2 27.6 14.5 27 14.2L26 16.3C27 16.8 28.3 17.1 29.8 17.1C32.8 17.1 34.8 15.6 35 13ZM44.5 18H48L45.5 2H42.5C41.5 2 40.7 2.6 40.4 3.5L35.8 18H39L39.6 16H43.8L44.5 18ZM40.8 13.5L42.5 7.5L43.5 13.5H40.8ZM26 2L23.5 18H20L22.5 2H26Z"/>
+                        </svg>
+                      </div>
                       {/* Mastercard Logo */}
-                      <svg className="h-8 w-10" viewBox="0 0 48 32" fill="none">
-                        <rect width="48" height="32" rx="4" fill="#000"/>
-                        <circle cx="18" cy="16" r="8" fill="#EB001B"/>
-                        <circle cx="30" cy="16" r="8" fill="#F79E1B"/>
-                        <path d="M24 10.5C25.8 12 27 14.3 27 16.8C27 19.3 25.8 21.6 24 23.1C22.2 21.6 21 19.3 21 16.8C21 14.3 22.2 12 24 10.5Z" fill="#FF5F00"/>
-                      </svg>
+                      <div className="h-7 w-11 bg-white rounded flex items-center justify-center overflow-hidden">
+                        <svg viewBox="0 0 48 32" className="h-5 w-8">
+                          <circle cx="16" cy="16" r="10" fill="#EB001B"/>
+                          <circle cx="32" cy="16" r="10" fill="#F79E1B"/>
+                          <path d="M24 8.5C26.2 10.3 27.5 13 27.5 16C27.5 19 26.2 21.7 24 23.5C21.8 21.7 20.5 19 20.5 16C20.5 13 21.8 10.3 24 8.5Z" fill="#FF5F00"/>
+                        </svg>
+                      </div>
                     </div>
                     <span className="text-white font-medium text-sm">Card</span>
                   </button>
@@ -670,12 +745,14 @@ export default function CheckoutPage() {
                         : "border-white/10 hover:border-white/30"
                     )}
                   >
-                    <svg className="h-8 w-16" viewBox="0 0 100 32" fill="none">
-                      <rect width="100" height="32" rx="4" fill="#003087"/>
-                      <path d="M25 10H18C17.5 10 17 10.4 16.9 10.9L14 25C13.9 25.3 14.1 25.5 14.4 25.5H18C18.5 25.5 18.9 25.1 19 24.6L19.8 20H23C26.5 20 29 17.5 29.5 14.5C30 11 27 10 25 10ZM25 14.5C24.8 16 23.5 17 22 17H20.5L21.2 13H23C24 13 25.2 13.5 25 14.5Z" fill="white"/>
-                      <path d="M35 10H28C27.5 10 27 10.4 26.9 10.9L24 25C23.9 25.3 24.1 25.5 24.4 25.5H28C28.5 25.5 28.9 25.1 29 24.6L29.8 20H33C36.5 20 39 17.5 39.5 14.5C40 11 37 10 35 10ZM35 14.5C34.8 16 33.5 17 32 17H30.5L31.2 13H33C34 13 35.2 13.5 35 14.5Z" fill="#009CDE"/>
-                      <path d="M45 10H38L37.9 10.9L40.8 25C40.9 25.3 41.1 25.5 41.4 25.5H45C45.5 25.5 45.9 25.1 46 24.6L48.9 10.9C49 10.6 48.8 10 48.5 10H45ZM43 22L41 13H44L43 22Z" fill="white"/>
-                    </svg>
+                    <div className="h-7 w-16 bg-white rounded flex items-center justify-center px-2">
+                      <svg viewBox="0 0 100 24" className="h-4 w-14">
+                        <path fill="#003087" d="M12.5 4H7C6.5 4 6 4.4 5.9 4.9L3.5 19C3.4 19.3 3.6 19.5 3.9 19.5H6.5C7 19.5 7.4 19.1 7.5 18.6L8.1 14.6C8.2 14.1 8.6 13.7 9.2 13.7H11C14.5 13.7 16.5 11.9 17 8.5C17.4 5.8 15.5 4 12.5 4ZM13.5 8.8C13.2 10.6 11.8 10.6 10.5 10.6H9.7L10.3 6.8C10.3 6.5 10.6 6.3 10.9 6.3H11.3C12.2 6.3 13 6.3 13.5 6.8C13.8 7.2 13.8 7.8 13.5 8.8Z"/>
+                        <path fill="#003087" d="M26.5 8.5H24C23.7 8.5 23.4 8.7 23.4 9L23.3 9.8L23.1 9.5C22.4 8.5 20.9 8.2 19.4 8.2C16 8.2 13.1 10.8 12.5 14.4C12.2 16.2 12.6 17.9 13.6 19.1C14.5 20.1 15.8 20.6 17.3 20.6C19.8 20.6 21.2 19 21.2 19L21.1 19.8C21 20.1 21.2 20.4 21.5 20.4H23.8C24.3 20.4 24.7 20 24.8 19.5L26.2 9.2C26.2 8.8 26 8.5 26.5 8.5ZM22 14.5C21.7 16.2 20.4 17.4 18.7 17.4C17.8 17.4 17.1 17.1 16.6 16.5C16.1 15.9 15.9 15 16.1 14C16.4 12.3 17.7 11.1 19.4 11.1C20.3 11.1 21 11.4 21.5 12C22 12.6 22.2 13.5 22 14.5Z"/>
+                        <path fill="#009CDE" d="M41.5 8.5H39C38.7 8.5 38.4 8.7 38.4 9L38.3 9.8L38.1 9.5C37.4 8.5 35.9 8.2 34.4 8.2C31 8.2 28.1 10.8 27.5 14.4C27.2 16.2 27.6 17.9 28.6 19.1C29.5 20.1 30.8 20.6 32.3 20.6C34.8 20.6 36.2 19 36.2 19L36.1 19.8C36 20.1 36.2 20.4 36.5 20.4H38.8C39.3 20.4 39.7 20 39.8 19.5L41.2 9.2C41.2 8.8 41 8.5 41.5 8.5ZM37 14.5C36.7 16.2 35.4 17.4 33.7 17.4C32.8 17.4 32.1 17.1 31.6 16.5C31.1 15.9 30.9 15 31.1 14C31.4 12.3 32.7 11.1 34.4 11.1C35.3 11.1 36 11.4 36.5 12C37 12.6 37.2 13.5 37 14.5Z"/>
+                        <path fill="#003087" d="M57.5 8.5H55C54.6 8.5 54.2 8.7 54 9.1L49.5 16.5L47.5 9.4C47.4 8.9 46.9 8.5 46.4 8.5H44C43.7 8.5 43.4 8.8 43.5 9.2L47.2 19.5L43.6 24.9C43.4 25.2 43.6 25.6 44 25.6H46.5C46.9 25.6 47.3 25.4 47.5 25L58 9.2C58.2 8.9 58 8.5 57.5 8.5Z"/>
+                      </svg>
+                    </div>
                     <span className="text-white font-medium text-sm">PayPal</span>
                   </button>
                 </div>
@@ -803,12 +880,140 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
+              {/* Discount Code Input */}
+              <div className="mb-4">
+                {appliedDiscount ? (
+                  <div className="p-3 bg-green-500/10 border border-green-500/20 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-green-400" />
+                      <span className="text-green-400 font-medium">{appliedDiscount.code}</span>
+                      <span className="text-white/60 text-sm">
+                        -{appliedDiscount.type === 'PERCENTAGE' ? `${appliedDiscount.value}%` : formatPrice(appliedDiscount.value)}
+                        {appliedDiscount.discountAmount > 0 && (
+                          <span className="ml-1">({formatPrice(appliedDiscount.discountAmount)} off)</span>
+                        )}
+                      </span>
+                    </div>
+                    <button
+                      onClick={removeDiscount}
+                      className="text-white/40 hover:text-white"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                      <input
+                        type="text"
+                        placeholder="Discount code"
+                        value={discountCode}
+                        onChange={(e) => {
+                          setDiscountCode(e.target.value.toUpperCase());
+                          setDiscountError(null);
+                        }}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleApplyDiscount())}
+                        className="w-full bg-zinc-800 border border-white/10 pl-10 pr-4 py-2.5 text-white placeholder:text-white/40 focus:outline-none focus:border-amber-400 text-sm"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={handleApplyDiscount}
+                      disabled={validatingDiscount || !discountCode.trim()}
+                      variant="outline"
+                      className="border-amber-400/50 text-amber-400 hover:bg-amber-400/10 px-4"
+                    >
+                      {validatingDiscount ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
+                    </Button>
+                  </div>
+                )}
+                {discountError && (
+                  <p className="text-red-400 text-xs mt-1">{discountError}</p>
+                )}
+              </div>
+
+              {/* Loyalty Points Redemption */}
+              {isLoggedIn && user && (user.loyaltyPoints || 0) > 0 && (
+                <div className="mb-4 p-4 bg-purple-500/10 border border-purple-500/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-purple-400" />
+                      <span className="text-purple-400 font-medium text-sm">Use Loyalty Points</span>
+                    </div>
+                    <span className="text-white/60 text-sm">{availablePoints} pts available</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUsePoints(!usePoints);
+                        if (usePoints) setPointsToRedeem(0);
+                      }}
+                      className={cn(
+                        "w-5 h-5 border-2 flex items-center justify-center transition-all",
+                        usePoints ? "bg-purple-500 border-purple-500" : "border-white/30"
+                      )}
+                    >
+                      {usePoints && <Check className="w-3 h-3 text-white" />}
+                    </button>
+                    <span className="text-white text-sm">Redeem points for discount</span>
+                  </div>
+                  
+                  {usePoints && (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="range"
+                          min="0"
+                          max={maxPointsValue}
+                          value={pointsToRedeem}
+                          onChange={(e) => setPointsToRedeem(parseInt(e.target.value))}
+                          className="flex-1 accent-purple-500"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          max={maxPointsValue}
+                          value={pointsToRedeem}
+                          onChange={(e) => setPointsToRedeem(Math.min(parseInt(e.target.value) || 0, maxPointsValue))}
+                          className="w-20 bg-zinc-800 border border-white/10 px-2 py-1 text-white text-sm text-center"
+                        />
+                      </div>
+                      <p className="text-white/50 text-xs">
+                        {pointsToRedeem} points = {formatPrice(pointsToRedeem)} discount
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setPointsToRedeem(maxPointsValue)}
+                        className="text-purple-400 text-xs hover:underline"
+                      >
+                        Use all available points
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Totals */}
               <div className="border-t border-white/10 pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-white/60">Subtotal</span>
                   <span className="text-white">{formatPrice(subtotal)}</span>
                 </div>
+                {appliedDiscount && appliedDiscount.discountAmount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-green-400">Discount</span>
+                    <span className="text-green-400">-{formatPrice(appliedDiscount.discountAmount)}</span>
+                  </div>
+                )}
+                {pointsDiscount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-purple-400">Points Redeemed</span>
+                    <span className="text-purple-400">-{formatPrice(pointsDiscount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-white/60">Shipping</span>
                   <span className="text-white">{shipping === 0 ? 'FREE' : formatPrice(shipping)}</span>

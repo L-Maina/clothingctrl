@@ -15,6 +15,7 @@ import {
   RefreshCw,
   X,
   AlertCircle,
+  Ban,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -109,6 +110,9 @@ export default function OrdersPage() {
   const [returnReason, setReturnReason] = useState('');
   const [returnDetails, setReturnDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   const { toast } = useToast();
 
   // Redirect if not logged in
@@ -237,6 +241,56 @@ export default function OrdersPage() {
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const openCancelDialog = (order: Order) => {
+    setOrderToCancel(order);
+    setShowCancelDialog(true);
+  };
+
+  const handleCancelOrder = async () => {
+    if (!orderToCancel) return;
+    
+    setCancelling(true);
+    try {
+      const response = await fetch('/api/orders/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: orderToCancel.id,
+          customerEmail: user?.email,
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Order Cancelled',
+          description: `Order ${orderToCancel.orderNumber} has been cancelled successfully.`,
+        });
+        setShowCancelDialog(false);
+        // Refresh orders
+        const ordersRes = await fetch('/api/orders', {
+          headers: {
+            'x-customer-email': user?.email || '',
+          },
+        });
+        if (ordersRes.ok) {
+          const data = await ordersRes.json();
+          setOrders(data.orders);
+        }
+      } else {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to cancel order');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to cancel order. Please contact support.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -450,6 +504,18 @@ export default function OrdersPage() {
                           <Download className="w-4 h-4 mr-1" />
                           Receipt
                         </Button>
+                        {/* Cancel Order Button - only for pending orders */}
+                        {order.status === 'PENDING' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openCancelDialog(order)}
+                            className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                          >
+                            <Ban className="w-4 h-4 mr-1" />
+                            Cancel
+                          </Button>
+                        )}
                         {/* Return Request Button */}
                         {order.status === 'DELIVERED' && !hasReturnRequest && (
                           <Button
@@ -588,6 +654,55 @@ export default function OrdersPage() {
                   className="flex-1 bg-amber-400 hover:bg-amber-300 text-black font-bold"
                 >
                   {submitting ? 'Submitting...' : 'Submit Request'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Order Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-400">Cancel Order</DialogTitle>
+            <DialogDescription className="text-white/40">
+              Are you sure you want to cancel this order?
+            </DialogDescription>
+          </DialogHeader>
+
+          {orderToCancel && (
+            <div className="space-y-4 py-4">
+              <div className="p-4 bg-zinc-800 border border-white/10 rounded-lg">
+                <p className="text-white font-medium">{orderToCancel.orderNumber}</p>
+                <p className="text-white/60 text-sm">
+                  {orderToCancel.items.length} item{orderToCancel.items.length > 1 ? 's' : ''} • Total: {orderToCancel.currency} {orderToCancel.total.toLocaleString()}
+                </p>
+              </div>
+
+              <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-red-300">
+                  <p className="font-medium">Warning</p>
+                  <p className="mt-1">This action cannot be undone. Your order will be permanently cancelled.</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCancelDialog(false)}
+                  disabled={cancelling}
+                  className="flex-1 border-white/10 text-white/60 hover:text-white"
+                >
+                  Keep Order
+                </Button>
+                <Button
+                  onClick={handleCancelOrder}
+                  disabled={cancelling}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold"
+                >
+                  {cancelling ? 'Cancelling...' : 'Yes, Cancel Order'}
                 </Button>
               </div>
             </div>

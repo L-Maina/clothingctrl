@@ -34,6 +34,8 @@ export async function POST(request: Request) {
       paymentMethod,
       notes,
       isGuestOrder,
+      discountCode,
+      pointsUsed = 0,
     } = body;
 
     // Validate required fields
@@ -155,10 +157,50 @@ export async function POST(request: Request) {
     }
 
     // Calculate tax (16% VAT in Kenya)
-    const tax = subtotal * 0.16;
+    let discountAmount = 0;
+    let appliedDiscount = null;
+    
+    // Validate and apply discount code if provided
+    if (discountCode) {
+      const discount = await db.discount.findUnique({
+        where: { code: discountCode.toUpperCase() },
+      });
+      
+      if (discount && discount.isActive) {
+        const now = new Date();
+        const isValidDate = (!discount.startDate || new Date(discount.startDate) <= now) &&
+                            (!discount.endDate || new Date(discount.endDate) >= now);
+        const isValidUsage = !discount.maxUses || discount.currentUses < discount.maxUses;
+        const isValidAmount = !discount.minOrderAmount || subtotal >= discount.minOrderAmount;
+        
+        if (isValidDate && isValidUsage && isValidAmount) {
+          if (discount.type === 'PERCENTAGE') {
+            discountAmount = subtotal * (discount.value / 100);
+          } else {
+            discountAmount = Math.min(discount.value, subtotal);
+          }
+          appliedDiscount = discount;
+          
+          // Increment usage count
+          await db.discount.update({
+            where: { id: discount.id },
+            data: { currentUses: { increment: 1 } },
+          });
+        }
+      }
+    }
+    
+    // Calculate points discount
+    let pointsDiscount = 0;
+    if (pointsUsed > 0 && customer.loyalty && customer.loyalty.points >= pointsUsed) {
+      pointsDiscount = pointsUsed; // 1 point = 1 KES
+    }
+    
+    const taxableAmount = Math.max(0, subtotal - discountAmount - pointsDiscount);
+    const tax = taxableAmount * 0.16;
 
     // Total
-    const total = subtotal + shipping + tax;
+    const total = subtotal - discountAmount - pointsDiscount + shipping + tax;
 
     // Generate order number
     const orderNumber = generateOrderNumber();
@@ -221,27 +263,44 @@ export async function POST(request: Request) {
       }
     }
 
-    // Add loyalty points
+    // Add loyalty points (and deduct if points were used)
     const points = calculateLoyaltyPoints(total);
-    if (points > 0 && customer.loyalty) {
-      await db.loyalty.update({
-        where: { customerId: customer.id },
-        data: {
-          points: { increment: points },
-        },
-      });
+    if (customer.loyalty) {
+      // Deduct points if used
+      if (pointsDiscount > 0) {
+        await db.loyalty.update({
+          where: { customerId: customer.id },
+          data: {
+            points: { decrement: pointsDiscount },
+          },
+        });
+      }
+      
+      // Add earned points
+      if (points > 0) {
+        await db.loyalty.update({
+          where: { customerId: customer.id },
+          data: {
+            points: { increment: points },
+          },
+        });
+      }
 
-      // Update tier based on points
-      const totalPoints = customer.loyalty.points + points;
-      let tier = 'BRONZE';
-      if (totalPoints >= 1000) tier = 'PLATINUM';
-      else if (totalPoints >= 500) tier = 'GOLD';
-      else if (totalPoints >= 200) tier = 'SILVER';
-
-      await db.loyalty.update({
+      // Update tier based on new total points
+      const updatedLoyalty = await db.loyalty.findUnique({
         where: { customerId: customer.id },
-        data: { tier },
       });
+      if (updatedLoyalty) {
+        let tier = 'BRONZE';
+        if (updatedLoyalty.points >= 1000) tier = 'PLATINUM';
+        else if (updatedLoyalty.points >= 500) tier = 'GOLD';
+        else if (updatedLoyalty.points >= 200) tier = 'SILVER';
+
+        await db.loyalty.update({
+          where: { customerId: customer.id },
+          data: { tier },
+        });
+      }
     }
 
     // Clear cart items for this customer
@@ -300,6 +359,11 @@ export async function POST(request: Request) {
         orderNumber: order.orderNumber,
         status: order.status,
         subtotal,
+        discount: discountAmount > 0 ? {
+          code: appliedDiscount?.code,
+          amount: discountAmount,
+        } : null,
+        pointsRedeemed: pointsDiscount,
         shipping,
         tax,
         total,

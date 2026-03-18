@@ -34,9 +34,14 @@ export function AdminOnboarding({ onComplete }: OnboardingModalProps) {
   const [displayedCode, setDisplayedCode] = useState<string | null>(null);
   
   // If no onboarding needed, don't render
+  // ONBOARDING PAUSED - Always return null
+  return null;
+  
+  /* Original logic - paused
   if (!onboardingStep || onboardingStep === 'complete' || !adminUser) {
     return null;
   }
+  */
   
   const handlePasswordChange = async () => {
     setPasswordError('');

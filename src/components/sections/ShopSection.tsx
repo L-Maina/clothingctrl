@@ -44,10 +44,10 @@ const subcategories = {
 
 const brandFilters = [
   'All', 'Gucci', 'Prada', 'Balenciaga', 'Bape', 'Diesel', 
-  'Chrome Hearts', 'Carhartt', 'Nike', 'Other'
+  'Chrome Hearts', 'Carhartt', 'Nike', 'Custom', 'Other'
 ];
 
-const conditionFilters = ['All', 'New', 'Thrifting', 'Custom'];
+const conditionFilters = ['All', 'New', 'Thrifting'];
 
 export function ShopSection() {
   const [activeTab, setActiveTab] = useState<ProductType>('CLOTHES');
@@ -95,7 +95,7 @@ export function ShopSection() {
     // Filter by brand
     if (activeBrand !== 'All') {
       if (activeBrand === 'Other') {
-        const knownBrands = ['Gucci', 'Prada', 'Balenciaga', 'Bape', 'Diesel', 'Chrome Hearts', 'Carhartt', 'Nike', 'Adidas'];
+        const knownBrands = ['Gucci', 'Prada', 'Balenciaga', 'Bape', 'Diesel', 'Chrome Hearts', 'Carhartt', 'Nike', 'Adidas', 'Custom'];
         if (product.brand && knownBrands.includes(product.brand)) return false;
       } else if (product.brand !== activeBrand) {
         return false;
@@ -106,7 +106,6 @@ export function ShopSection() {
     if (activeCondition !== 'All') {
       if (activeCondition === 'New' && product.condition !== 'NEW') return false;
       if (activeCondition === 'Thrifting' && product.condition !== 'THRIFTED') return false;
-      if (activeCondition === 'Custom' && product.condition !== 'CUSTOM') return false;
     }
     
     return true;

@@ -1,7 +1,8 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Minus, Plus, ShoppingBag, Trash2, Truck } from 'lucide-react';
+import { X, Minus, Plus, ShoppingBag, Trash2, Truck, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useCartStore, useCurrencyStore } from '@/lib/store';
@@ -10,10 +11,44 @@ export function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, getSubtotal } = useCartStore();
   const { formatPrice, currency } = useCurrencyStore();
   const subtotal = getSubtotal();
-  // Free shipping threshold: KES 10,000 or equivalent
-  const freeShippingThreshold = 10000;
-  const shippingCost = 500; // KES 500 shipping
-  const shipping = subtotal >= freeShippingThreshold ? 0 : shippingCost;
+
+  // Fetch shipping settings from API
+  const [shippingSettings, setShippingSettings] = useState<{
+    shippingNairobi: number;
+    shippingKenya: number;
+    shippingInternational: number;
+    shippingFreeThreshold: number | null;
+  }>({
+    shippingNairobi: 200,
+    shippingKenya: 500,
+    shippingInternational: 2000,
+    shippingFreeThreshold: null,
+  });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch('/api/admin/settings');
+        const data = await response.json();
+        if (data.settings) {
+          setShippingSettings({
+            shippingNairobi: data.settings.shippingNairobi ?? 200,
+            shippingKenya: data.settings.shippingKenya ?? 500,
+            shippingInternational: data.settings.shippingInternational ?? 2000,
+            shippingFreeThreshold: data.settings.shippingFreeThreshold ?? null,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch shipping settings:', error);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  // Free shipping threshold from admin settings (null means no free shipping)
+  const freeShippingThreshold = shippingSettings.shippingFreeThreshold;
+  const shippingCost = shippingSettings.shippingKenya; // Default to Kenya shipping
+  const shipping = (freeShippingThreshold !== null && subtotal >= freeShippingThreshold) ? 0 : shippingCost;
   const total = subtotal + shipping;
 
   return (
@@ -145,7 +180,7 @@ export function CartDrawer() {
                       {shipping === 0 ? 'FREE' : formatPrice(shipping)}
                     </span>
                   </div>
-                  {shipping > 0 && (
+                  {shipping > 0 && freeShippingThreshold !== null && (
                     <p className="text-xs text-amber-400">
                       Add {formatPrice(freeShippingThreshold - subtotal)} more for free shipping
                     </p>

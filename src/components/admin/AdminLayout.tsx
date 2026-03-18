@@ -30,6 +30,7 @@ import {
   Tag,
   HelpCircle,
   Download,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -66,6 +67,7 @@ const navigation = [
   { name: 'Social', href: '/admin/social', icon: Share2 },
   { name: 'Analytics', href: '/admin/analytics', icon: TrendingUp },
   { name: 'Export', href: '/admin/export', icon: Download },
+  { name: 'Admins', href: '/admin/admins', icon: Shield },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
