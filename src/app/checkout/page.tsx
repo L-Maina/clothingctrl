@@ -717,8 +717,12 @@ export default function CheckoutPage() {
                     )}
                   >
                     <div className="flex gap-3 items-center justify-center">
-                      <SiVisa className="w-12 h-8 text-[#1A1F71]" />
-                      <SiMastercard className="w-12 h-8" />
+                      <div className="bg-white rounded px-2 py-1">
+                        <SiVisa className="w-10 h-6 text-[#1A1F71]" />
+                      </div>
+                      <div className="bg-white rounded px-2 py-1">
+                        <SiMastercard className="w-10 h-6" />
+                      </div>
                     </div>
                     <span className="text-white font-medium text-sm">Card</span>
                   </button>
@@ -734,7 +738,9 @@ export default function CheckoutPage() {
                         : "border-white/10 hover:border-white/30"
                     )}
                   >
-                    <SiPaypal className="w-16 h-8 text-[#003087]" />
+                    <div className="bg-white rounded px-3 py-1">
+                      <SiPaypal className="w-14 h-6 text-[#003087]" />
+                    </div>
                     <span className="text-white font-medium text-sm">PayPal</span>
                   </button>
                 </div>
