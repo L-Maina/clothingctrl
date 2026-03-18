@@ -1,0 +1,368 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./db/custom.db"
+}
+
+// Main product types
+enum ProductType {
+  CLOTHES
+  SHOES
+  ACCESSORIES
+}
+
+// Product categories
+model Category {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  type        ProductType   @default(CLOTHES)
+  description String?
+  image       String?
+  products    Product[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+// Products
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  description String
+  price       Float       // Price in KES (Kenyan Shilling)
+  compareAt   Float?      // Original price for sale items
+  images      String      // JSON array of image URLs
+  colors      String      // JSON array of color options
+  sizes       String      // JSON array of sizes
+  brand       String?     // Brand name (Gucci, Prada, Bape, etc.)
+  condition   String      @default("NEW") // NEW, THRIFTED, CUSTOM
+  category    Category    @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  inStock     Boolean     @default(true)
+  featured    Boolean     @default(false)
+  isNew       Boolean     @default(false)
+  isLimited   Boolean     @default(false)
+  limitedQty  Int?
+  dropDate    DateTime?
+  tags        String?     // JSON array of tags
+  reviews     Review[]
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+// Reviews
+model Review {
+  id        String   @id @default(cuid())
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+  name      String
+  rating    Int      // 1-5
+  comment   String
+  image     String?
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// Customer
+model Customer {
+  id         String      @id @default(cuid())
+  email      String      @unique
+  name       String?
+  phone      String?
+  password   String?     // Hashed password (optional for guest checkout)
+  addresses  String?     // JSON array of addresses
+  currency   String      @default("KES") // Preferred currency
+  
+  // Notification preferences
+  emailNotifications Boolean @default(true)
+  smsNotifications   Boolean @default(true)
+  
+  // Account status
+  isVerified Boolean @default(false)
+  isActive   Boolean @default(true)
+  
+  orders     Order[]
+  cartItems  CartItem[]
+  loyalty    Loyalty?
+  reviews    CommunityReview[]
+  notifications Notification[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+// Loyalty points
+model Loyalty {
+  id         String    @id @default(cuid())
+  points     Int       @default(0)
+  tier       String    @default("BRONZE") // BRONZE, SILVER, GOLD, PLATINUM
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  customerId String?   @unique
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+// Cart items
+model CartItem {
+  id         String   @id @default(cuid())
+  customer   Customer @relation(fields: [customerId], references: [id])
+  customerId String
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  String
+  quantity   Int      @default(1)
+  color      String
+  size       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([customerId, productId, color, size])
+}
+
+// Orders
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique
+  customer      Customer    @relation(fields: [customerId], references: [id])
+  customerId    String
+  status        String      @default("PENDING") // PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+  items         OrderItem[]
+  subtotal      Float
+  shipping      Float
+  tax           Float
+  total         Float
+  currency      String      @default("KES")
+  shippingAddr  String      // JSON
+  billingAddr   String?     // JSON
+  paymentMethod String?
+  paymentStatus String      @default("PENDING")
+  notes         String?
+  
+  // Tracking
+  trackingNumber String?
+  trackingUrl    String?
+  estimatedDelivery DateTime?
+  
+  // Guest checkout
+  isGuestOrder  Boolean @default(false)
+  guestEmail    String?
+  
+  // Review status
+  reviewRequested Boolean @default(false)
+  reviewed        Boolean @default(false)
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+// Order items
+model OrderItem {
+  id        String  @id @default(cuid())
+  order     Order   @relation(fields: [orderId], references: [id])
+  orderId   String
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+  quantity  Int
+  price     Float
+  color     String
+  size      String
+}
+
+// Newsletter subscribers
+model Subscriber {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  discountUsed Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+// Next drop info
+model NextDrop {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  date        DateTime
+  image       String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Community photos (user-generated content)
+model CommunityPhoto {
+  id        String   @id @default(cuid())
+  imageUrl  String
+  username  String
+  productId String?
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// Currency exchange rates cache
+model ExchangeRate {
+  id          String   @id @default(cuid())
+  currency    String   @unique // USD, EUR, GBP, etc.
+  rate        Float    // Rate relative to KES
+  updatedAt   DateTime @default(now())
+}
+
+// Social media handles for the store
+model SocialHandle {
+  id          String   @id @default(cuid())
+  platform    String   @unique // instagram, tiktok, twitter, facebook, etc.
+  handle      String   // @clothingctrl or username
+  url         String?  // Full URL to profile
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Admin users
+model AdminUser {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String
+  password          String    // Hashed password
+  
+  // Onboarding fields
+  isTemporaryPassword Boolean @default(false) // True if using initial temp password
+  onboardingComplete  Boolean @default(false) // True after completing onboarding flow
+  notificationEmail   String? // Preferred email for notifications (can differ from login email)
+  emailVerified       Boolean @default(false) // True after confirming notification email
+  
+  // Security tracking
+  lastLoginAt       DateTime?
+  passwordChangedAt DateTime?
+  
+  role              String    @default("ADMIN") // ADMIN, SUPER_ADMIN
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+// Store settings (singleton - only one record should exist)
+model StoreSettings {
+  id              String   @id @default(cuid())
+  storeName       String   @default("Clothing Ctrl")
+  storeDescription String?
+  storeEmail      String?
+  storePhone      String?
+
+  // Address
+  addressLine1    String?
+  addressLine2    String?
+  city            String?  @default("Nairobi")
+  country         String?  @default("Kenya")
+
+  // Store hours
+  openHour        String?  @default("12:00")
+  closeHour       String?  @default("18:00")
+  openDays        String?  @default("Mon-Sat") // e.g., "Mon-Sat"
+
+  // Announcement banner
+  bannerEnabled   Boolean  @default(false)
+  bannerText      String?
+  bannerLink      String?
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+
+  // Shipping settings
+  shippingNairobi       Float   @default(200)    // Within Nairobi in KES
+  shippingKenya         Float   @default(500)    // Other areas in Kenya in KES
+  shippingInternational Float   @default(2000)   // Outside Kenya in KES
+  shippingFreeThreshold Float?                    // Free shipping above this amount
+
+  // Loyalty settings
+  loyaltyPointsPerShilling Float @default(0.01) // Points earned per KES spent
+  loyaltyBronzeThreshold   Int   @default(0)
+  loyaltySilverThreshold   Int   @default(200)
+  loyaltyGoldThreshold     Int   @default(500)
+  loyaltyPlatinumThreshold Int   @default(1000)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Community reviews - linked to orders for verification
+model CommunityReview {
+  id             String   @id @default(cuid())
+  customer       Customer @relation(fields: [customerId], references: [id])
+  customerId     String
+  orderId        String   // Must be from a delivered order
+  productId      String?
+  rating         Int      // 1-5
+  comment        String
+  imageUrl       String?  // Photo with product
+  username       String
+  instagramHandle String? // Customer's Instagram handle
+  verified       Boolean  @default(false) // Verified purchase
+  approved       Boolean  @default(false) // Admin approved
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// Customer notifications
+model Notification {
+  id         String   @id @default(cuid())
+  customer   Customer @relation(fields: [customerId], references: [id])
+  customerId String
+  type       String   // ORDER_UPDATE, PROMO, REVIEW_REQUEST
+  title      String
+  message    String
+  data       String?  // JSON additional data
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+// Kenya locations for autocomplete
+model KenyaLocation {
+  id        String   @id @default(cuid())
+  name      String   // City/town name
+  county    String   // County name
+  type      String   // CITY, TOWN, AREA
+  createdAt DateTime @default(now())
+}
+
+// Notification logs for SMS/Email
+model NotificationLog {
+  id           String   @id @default(cuid())
+  type         String   // SMS, EMAIL
+  recipient    String   // Phone or email
+  subject      String?
+  message      String
+  status       String   // PENDING, SENT, FAILED
+  orderId      String?
+  errorMessage String?
+  createdAt    DateTime @default(now())
+}
+
+// Email logs for admin notifications
+model EmailLog {
+  id           String   @id @default(cuid())
+  type         String   // ORDER_NEW, ORDER_STATUS, ADMIN_ONBOARDING, PASSWORD_RESET, EMAIL_VERIFICATION
+  recipient    String   // Email address
+  subject      String
+  status       String   // PENDING, SENT, FAILED
+  adminUserId  String?  // Reference to admin user if applicable
+  orderId      String?  // Reference to order if applicable
+  errorMessage String?
+  metadata     String?  // JSON for additional data
+  createdAt    DateTime @default(now())
+}
+
+// Realtime sync events
+model SyncEvent {
+  id        String   @id @default(cuid())
+  type      String   // SETTINGS, SOCIALS, ORDER
+  action    String   // CREATE, UPDATE, DELETE
+  data      String   // JSON data
+  createdAt DateTime @default(now())
+}
