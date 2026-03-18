@@ -31,6 +31,7 @@ export function AdminOnboarding({ onComplete }: OnboardingModalProps) {
   const [verificationCode, setVerificationCode] = useState('');
   const [verifyError, setVerifyError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [displayedCode, setDisplayedCode] = useState<string | null>(null);
   
   // If no onboarding needed, don't render
   if (!onboardingStep || onboardingStep === 'complete' || !adminUser) {
@@ -132,6 +133,11 @@ export function AdminOnboarding({ onComplete }: OnboardingModalProps) {
       
       // Update local state
       updateAdminUser({ notificationEmail });
+      
+      // Store the verification code to display (for development/testing)
+      if (data.verificationCode) {
+        setDisplayedCode(data.verificationCode);
+      }
       
       // Move to verification step
       setOnboardingStep('verify');
@@ -397,6 +403,14 @@ export function AdminOnboarding({ onComplete }: OnboardingModalProps) {
                   </p>
                 </div>
                 
+                {/* Show verification code in development/testing environment */}
+                {displayedCode && (
+                  <div className="bg-amber-400/10 border border-amber-400/30 rounded-lg p-3 text-center">
+                    <p className="text-amber-400 text-xs mb-1">Your verification code:</p>
+                    <p className="text-2xl font-mono font-bold text-white tracking-wider">{displayedCode}</p>
+                  </div>
+                )}
+                
                 <div>
                   <Input
                     type="text"
@@ -434,7 +448,7 @@ export function AdminOnboarding({ onComplete }: OnboardingModalProps) {
                   onClick={handleSkipEmail}
                   className="w-full text-white/40 text-sm hover:text-white/60 transition-colors"
                 >
-                  Resend code
+                  Skip verification
                 </button>
               </motion.div>
             )}
