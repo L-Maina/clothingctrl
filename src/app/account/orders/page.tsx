@@ -3,13 +3,36 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Package, Truck, CheckCircle, Clock, ExternalLink, Download, Star, ArrowLeft } from 'lucide-react';
+import {
+  Package,
+  Truck,
+  CheckCircle,
+  Clock,
+  ExternalLink,
+  Download,
+  Star,
+  ArrowLeft,
+  RefreshCw,
+  X,
+  AlertCircle,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/lib/store';
+import { cn } from '@/lib/utils';
 
 interface Order {
   id: string;
@@ -35,6 +58,21 @@ interface Order {
   reviewed: boolean;
 }
 
+interface ReturnRequest {
+  id: string;
+  orderNumber: string;
+  status: string;
+  reason: string;
+  items: Array<{
+    productName: string;
+    quantity: number;
+    price: number;
+    color: string;
+    size: string;
+  }>;
+  createdAt: string;
+}
+
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   PENDING: { label: 'Pending', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', icon: Clock },
   PROCESSING: { label: 'Processing', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: Package },
@@ -43,11 +81,34 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
   CANCELLED: { label: 'Cancelled', color: 'bg-red-500/20 text-red-400 border-red-500/30', icon: Package },
 };
 
+const returnReasons = [
+  { value: 'WRONG_SIZE', label: 'Wrong Size' },
+  { value: 'DEFECTIVE', label: 'Defective Product' },
+  { value: 'NOT_AS_DESCRIBED', label: 'Not as Described' },
+  { value: 'CHANGED_MIND', label: 'Changed My Mind' },
+  { value: 'OTHER', label: 'Other' },
+];
+
+const returnStatusConfig: Record<string, { label: string; color: string }> = {
+  PENDING: { label: 'Pending Review', color: 'bg-yellow-500/20 text-yellow-400' },
+  APPROVED: { label: 'Approved', color: 'bg-blue-500/20 text-blue-400' },
+  PROCESSING: { label: 'Processing', color: 'bg-purple-500/20 text-purple-400' },
+  COMPLETED: { label: 'Completed', color: 'bg-green-500/20 text-green-400' },
+  REJECTED: { label: 'Rejected', color: 'bg-red-500/20 text-red-400' },
+};
+
 export default function OrdersPage() {
   const router = useRouter();
   const { isLoggedIn, user } = useAuthStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
+  const [showReturnDialog, setShowReturnDialog] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [returnReason, setReturnReason] = useState('');
+  const [returnDetails, setReturnDetails] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
   // Redirect if not logged in
@@ -59,28 +120,36 @@ export default function OrdersPage() {
 
   // Fetch orders
   useEffect(() => {
-    if (!isLoggedIn || !user?.email) return;
+    if (!isLoggedIn || !user?.id) return;
 
-    const fetchOrders = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/orders', {
+        // Fetch orders
+        const ordersRes = await fetch('/api/orders', {
           headers: {
             'x-customer-email': user.email,
           },
         });
-        if (response.ok) {
-          const data = await response.json();
+        if (ordersRes.ok) {
+          const data = await ordersRes.json();
           setOrders(data.orders);
         }
+
+        // Fetch return requests
+        const returnsRes = await fetch(`/api/returns?customerId=${user.id}`);
+        if (returnsRes.ok) {
+          const data = await returnsRes.json();
+          setReturnRequests(data.returns);
+        }
       } catch (error) {
-        console.error('Failed to fetch orders:', error);
+        console.error('Failed to fetch data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchOrders();
-  }, [isLoggedIn, user?.email]);
+    fetchData();
+  }, [isLoggedIn, user?.id, user?.email]);
 
   const handlePrintReceipt = (orderId: string) => {
     window.open(`/api/orders/receipt/${orderId}?print=1`, '_blank');
@@ -91,6 +160,84 @@ export default function OrdersPage() {
       title: 'Coming Soon',
       description: 'Review feature will be available soon!',
     });
+  };
+
+  const openReturnDialog = (order: Order) => {
+    setSelectedOrder(order);
+    setSelectedItems([]);
+    setReturnReason('');
+    setReturnDetails('');
+    setShowReturnDialog(true);
+  };
+
+  const toggleItem = (itemId: string) => {
+    setSelectedItems(prev =>
+      prev.includes(itemId)
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
+  const handleSubmitReturn = async () => {
+    if (!selectedOrder || selectedItems.length === 0 || !returnReason) {
+      toast({
+        title: 'Error',
+        description: 'Please select items and a reason for return.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const items = selectedOrder.items
+        .filter(item => selectedItems.includes(item.id))
+        .map(item => ({
+          productId: item.productId,
+          productName: item.productName,
+          quantity: item.quantity,
+          price: item.price,
+          color: item.color,
+          size: item.size,
+        }));
+
+      const response = await fetch('/api/returns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: selectedOrder.id,
+          customerId: user?.id,
+          reason: returnReason,
+          reasonDetails: returnDetails,
+          items,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast({
+          title: 'Return Request Submitted',
+          description: data.message,
+        });
+        setShowReturnDialog(false);
+        // Refresh return requests
+        const returnsRes = await fetch(`/api/returns?customerId=${user?.id}`);
+        if (returnsRes.ok) {
+          const data = await returnsRes.json();
+          setReturnRequests(data.returns);
+        }
+      } else {
+        throw new Error('Failed to submit return request');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to submit return request. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!isLoggedIn || !user) {
@@ -129,7 +276,7 @@ export default function OrdersPage() {
             <h1 className="text-3xl font-bold text-white">My Orders</h1>
           </div>
           <p className="text-white/60">
-            Track your orders and view your purchase history
+            Track your orders, view history, and request returns
           </p>
         </div>
 
@@ -151,6 +298,36 @@ export default function OrdersPage() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Active Return Requests */}
+        {returnRequests.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-amber-400" />
+              Active Return Requests
+            </h2>
+            <div className="space-y-3">
+              {returnRequests.map((ret) => {
+                const status = returnStatusConfig[ret.status] || returnStatusConfig.PENDING;
+                return (
+                  <Card key={ret.id} className="bg-zinc-900 border-white/10">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">Order {ret.orderNumber}</p>
+                          <p className="text-white/40 text-sm">
+                            {ret.items.length} item{ret.items.length > 1 ? 's' : ''} • {ret.reason.replace('_', ' ')}
+                          </p>
+                        </div>
+                        <Badge className={status.color}>{status.label}</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Orders List */}
@@ -182,6 +359,7 @@ export default function OrdersPage() {
             {orders.map((order) => {
               const status = statusConfig[order.status] || statusConfig.PENDING;
               const StatusIcon = status.icon;
+              const hasReturnRequest = returnRequests.some(r => r.orderNumber === order.orderNumber);
 
               return (
                 <Card key={order.id} className="overflow-hidden bg-zinc-900 border-white/10">
@@ -262,7 +440,7 @@ export default function OrdersPage() {
                           {order.currency} {order.total.toLocaleString()}
                         </p>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button
                           variant="outline"
                           size="sm"
@@ -272,12 +450,29 @@ export default function OrdersPage() {
                           <Download className="w-4 h-4 mr-1" />
                           Receipt
                         </Button>
+                        {/* Return Request Button */}
+                        {order.status === 'DELIVERED' && !hasReturnRequest && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openReturnDialog(order)}
+                            className="border-amber-400/50 text-amber-400 hover:bg-amber-400/10"
+                          >
+                            <RefreshCw className="w-4 h-4 mr-1" />
+                            Return
+                          </Button>
+                        )}
+                        {hasReturnRequest && (
+                          <Badge className="bg-blue-500/20 text-blue-400">
+                            Return Requested
+                          </Badge>
+                        )}
                         {order.status === 'DELIVERED' && !order.reviewed && (
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleRequestReview(order.id)}
-                            className="border-amber-400/50 text-amber-400 hover:bg-amber-400/10"
+                            className="border-white/20 text-white hover:bg-white/10"
                           >
                             <Star className="w-4 h-4 mr-1" />
                             Review
@@ -292,6 +487,113 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Return Request Dialog */}
+      <Dialog open={showReturnDialog} onOpenChange={setShowReturnDialog}>
+        <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Request Return</DialogTitle>
+            <DialogDescription className="text-white/40">
+              Select items to return and tell us why
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrder && (
+            <div className="space-y-6 py-4">
+              {/* Items Selection */}
+              <div>
+                <Label className="text-white/60 mb-3 block">Select items to return</Label>
+                <div className="space-y-2">
+                  {selectedOrder.items.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => toggleItem(item.id)}
+                      className={cn(
+                        "flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all",
+                        selectedItems.includes(item.id)
+                          ? "border-amber-400 bg-amber-400/5"
+                          : "border-white/10 bg-zinc-800/50 hover:border-white/30"
+                      )}
+                    >
+                      <Checkbox
+                        checked={selectedItems.includes(item.id)}
+                        className="pointer-events-none"
+                      />
+                      <div className="flex-1">
+                        <p className="text-white text-sm">{item.productName}</p>
+                        <p className="text-white/40 text-xs">{item.color} / {item.size} × {item.quantity}</p>
+                      </div>
+                      <p className="text-white/60 text-sm">
+                        {selectedOrder.currency} {item.price.toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reason Selection */}
+              <div>
+                <Label className="text-white/60 mb-3 block">Reason for return</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {returnReasons.map((reason) => (
+                    <button
+                      key={reason.value}
+                      onClick={() => setReturnReason(reason.value)}
+                      className={cn(
+                        "p-3 border rounded-lg text-sm transition-all",
+                        returnReason === reason.value
+                          ? "border-amber-400 bg-amber-400/5 text-white"
+                          : "border-white/10 bg-zinc-800/50 text-white/60 hover:text-white hover:border-white/30"
+                      )}
+                    >
+                      {reason.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Additional Details */}
+              <div>
+                <Label className="text-white/60 mb-2 block">Additional details (optional)</Label>
+                <Textarea
+                  value={returnDetails}
+                  onChange={(e) => setReturnDetails(e.target.value)}
+                  placeholder="Tell us more about why you're returning these items..."
+                  rows={3}
+                  className="bg-zinc-800 border-white/10 text-white placeholder:text-white/30 focus:border-amber-400"
+                />
+              </div>
+
+              {/* Info Note */}
+              <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-blue-300">
+                  <p className="font-medium">Return Policy</p>
+                  <p className="mt-1">Returns must be requested within 14 days of delivery. Items must be unworn with original tags.</p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowReturnDialog(false)}
+                  className="flex-1 border-white/10 text-white/60 hover:text-white"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmitReturn}
+                  disabled={submitting || selectedItems.length === 0 || !returnReason}
+                  className="flex-1 bg-amber-400 hover:bg-amber-300 text-black font-bold"
+                >
+                  {submitting ? 'Submitting...' : 'Submit Request'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

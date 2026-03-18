@@ -29,6 +29,7 @@ import {
   ArrowLeftRight,
   Tag,
   HelpCircle,
+  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -64,6 +65,7 @@ const navigation = [
   { name: 'FAQ', href: '/admin/faq', icon: HelpCircle },
   { name: 'Social', href: '/admin/social', icon: Share2 },
   { name: 'Analytics', href: '/admin/analytics', icon: TrendingUp },
+  { name: 'Export', href: '/admin/export', icon: Download },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 

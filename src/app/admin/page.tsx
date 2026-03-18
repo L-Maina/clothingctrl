@@ -15,6 +15,16 @@ import {
   ArrowDownRight,
   TrendingUp,
   Eye,
+  RefreshCw,
+  Tag,
+  HelpCircle,
+  Mail,
+  Download,
+  Settings,
+  Star,
+  Bell,
+  MessageSquare,
+  Crown,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -24,6 +34,9 @@ interface DashboardStats {
   totalProducts: number;
   totalSubscribers: number;
   pendingOrders: number;
+  pendingReturns: number;
+  activeDiscounts: number;
+  unreadMessages: number;
   recentOrders: Array<{
     id: string;
     customer: string;
@@ -60,6 +73,9 @@ export default function AdminDashboard() {
           totalProducts: 45,
           totalSubscribers: 156,
           pendingOrders: 5,
+          pendingReturns: 2,
+          activeDiscounts: 3,
+          unreadMessages: 4,
           recentOrders: [
             { id: '1', customer: 'John Doe', total: 15000, status: 'PENDING', date: new Date() },
             { id: '2', customer: 'Jane Smith', total: 28000, status: 'PROCESSING', date: new Date() },
@@ -111,7 +127,7 @@ export default function AdminDashboard() {
     <AdminLayout title="Dashboard">
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[...Array(6)].map((_, i) => (
+          {[...Array(9)].map((_, i) => (
             <div key={i} className="h-32 bg-zinc-900 rounded-lg animate-pulse" />
           ))}
         </div>
@@ -205,6 +221,65 @@ export default function AdminDashboard() {
                 <p className="text-white/40 text-sm mt-1">+0.5% this week</p>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Action Items Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <Link href="/admin/returns">
+              <Card className="bg-zinc-900 border-white/10 hover:border-amber-400/50 transition-colors cursor-pointer">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center">
+                    <RefreshCw className="w-5 h-5 text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">Returns</p>
+                    <p className="text-white/40 text-sm">{stats?.pendingReturns || 0} pending</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/admin/discounts">
+              <Card className="bg-zinc-900 border-white/10 hover:border-amber-400/50 transition-colors cursor-pointer">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+                    <Tag className="w-5 h-5 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">Discounts</p>
+                    <p className="text-white/40 text-sm">{stats?.activeDiscounts || 0} active</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/admin/faq">
+              <Card className="bg-zinc-900 border-white/10 hover:border-amber-400/50 transition-colors cursor-pointer">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                    <HelpCircle className="w-5 h-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">FAQ</p>
+                    <p className="text-white/40 text-sm">Manage FAQs</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/admin/export">
+              <Card className="bg-zinc-900 border-white/10 hover:border-amber-400/50 transition-colors cursor-pointer">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center">
+                    <Download className="w-5 h-5 text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">Export Data</p>
+                    <p className="text-white/40 text-sm">JSON / CSV</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
 
           {/* Charts and Tables */}
@@ -342,11 +417,62 @@ export default function AdminDashboard() {
               <Card className="bg-zinc-900 border-white/10 hover:border-amber-400/50 transition-colors cursor-pointer">
                 <CardContent className="flex items-center gap-4 p-6">
                   <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="w-6 h-6 text-blue-500" />
+                    <Settings className="w-6 h-6 text-blue-500" />
                   </div>
                   <div>
-                    <p className="text-white font-medium">Social Handles</p>
-                    <p className="text-white/40 text-sm">Update social links</p>
+                    <p className="text-white font-medium">Store Settings</p>
+                    <p className="text-white/40 text-sm">Configure your store</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+
+          {/* Additional Features Row */}
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link href="/admin/subscribers">
+              <Card className="bg-zinc-900 border-white/10 hover:border-amber-400/50 transition-colors cursor-pointer">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-pink-500/10 rounded-lg flex items-center justify-center">
+                      <Mail className="w-6 h-6 text-pink-500" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Newsletter</p>
+                      <p className="text-white/40 text-sm">Manage subscribers</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/admin/reviews">
+              <Card className="bg-zinc-900 border-white/10 hover:border-amber-400/50 transition-colors cursor-pointer">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-yellow-500/10 rounded-lg flex items-center justify-center">
+                      <Star className="w-6 h-6 text-yellow-500" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Reviews</p>
+                      <p className="text-white/40 text-sm">Approve customer reviews</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/admin/customers">
+              <Card className="bg-zinc-900 border-white/10 hover:border-amber-400/50 transition-colors cursor-pointer">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-cyan-500/10 rounded-lg flex items-center justify-center">
+                      <Crown className="w-6 h-6 text-cyan-500" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Loyalty Program</p>
+                      <p className="text-white/40 text-sm">Manage customer tiers</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
