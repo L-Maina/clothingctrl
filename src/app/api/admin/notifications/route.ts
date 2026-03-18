@@ -269,12 +269,16 @@ export async function GET() {
     // Sort by time (most recent first) and limit
     const sortedNotifications = notifications
       .sort((a, b) => {
-        // Put low stock and out of stock at top
+        // Priority: pending returns, low stock, out of stock, then by time
+        if (a.type === 'return' && a.time === 'Pending') return -1;
+        if (b.type === 'return' && b.time === 'Pending') return 1;
         if (a.time.includes('stock')) return -1;
         if (b.time.includes('stock')) return 1;
+        if (a.time === 'Pending') return -1;
+        if (b.time === 'Pending') return 1;
         return 0;
       })
-      .slice(0, 10);
+      .slice(0, 15);
 
     return NextResponse.json({ notifications: sortedNotifications });
   } catch (error) {
