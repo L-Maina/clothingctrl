@@ -207,9 +207,9 @@ const kenyaLocations = [
 async function seedLocations() {
   const count = await db.kenyaLocation.count();
   if (count === 0) {
+    // SQLite doesn't support skipDuplicates, but we already checked count is 0
     await db.kenyaLocation.createMany({
       data: kenyaLocations,
-      skipDuplicates: true,
     });
   }
 }
