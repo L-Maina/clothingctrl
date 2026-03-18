@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useEffect, useState, useMemo } from 'react';
 import { useSettingsStore, useRealtime } from '@/hooks/useRealtime';
-import { cn } from '@/lib/utils';
 
 // Fashion icons for floating elements
 const fashionIcons = ['🧥', '👟', '⛓️', '🧢', '💍', '🕶️', '👜', '⌚', '👗', '👕', '👖', '👠', '🧣', '手套', '🎽', '🩳', '👛', '🎀'];
@@ -141,15 +140,6 @@ export function Hero() {
   // Get settings from store
   const settings = useSettingsStore((state) => state.settings);
   
-  // Initialize banner dismissed state from sessionStorage (lazy initialization)
-  const [bannerDismissed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return sessionStorage.getItem('banner-dismissed') === 'true';
-  });
-  
-  // Calculate if banner is visible
-  const bannerVisible = settings.bannerEnabled && settings.bannerText && !bannerDismissed;
-  
   // Format hours
   const formatHours = () => {
     if (settings.openHour && settings.closeHour) {
@@ -186,10 +176,7 @@ export function Hero() {
 
   return (
     <section 
-      className={cn(
-        "relative min-h-screen flex items-center justify-center overflow-hidden bg-black pt-16 lg:pt-20 transition-all duration-300",
-        bannerVisible && "pt-[calc(4rem+44px)] lg:pt-[calc(5rem+44px)]"
-      )}
+      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-black"
     >
       {/* Animated Gradient Background */}
       <motion.div 

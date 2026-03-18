@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Navbar } from '@/components/layout/Navbar';
@@ -42,6 +42,15 @@ interface ClientLayoutProps {
 export function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname();
   const bannerHeight = useBannerHeight();
+  const [isDesktop, setIsDesktop] = useState(false);
+  
+  // Detect desktop for responsive navbar height
+  useEffect(() => {
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
   
   // Don't wrap admin pages with customer layout
   const isAdminPage = pathname?.startsWith('/admin');
@@ -50,9 +59,10 @@ export function ClientLayout({ children }: ClientLayoutProps) {
     return <>{children}</>;
   }
 
-  // Navbar height: 64px on mobile (h-16), 80px on desktop (lg:h-20)
+  // Navbar height: 64px on mobile (h-16), 80px on desktop (lg:h-20 = 5rem = 80px)
   // Add banner height when visible
-  const headerOffset = bannerHeight + 64; // Base offset on mobile
+  const navbarHeight = isDesktop ? 80 : 64;
+  const headerOffset = bannerHeight + navbarHeight;
   
   return (
     <div className="min-h-screen bg-black flex flex-col">
@@ -70,7 +80,7 @@ export function ClientLayout({ children }: ClientLayoutProps) {
       </Suspense>
       
       {/* Page Content - with padding for fixed header */}
-      <div className="flex-1 pt-16 lg:pt-20" style={{ paddingTop: `${headerOffset}px` }}>
+      <div className="flex-1" style={{ paddingTop: `${headerOffset}px` }}>
         {children}
       </div>
       

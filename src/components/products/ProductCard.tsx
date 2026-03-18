@@ -2,10 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Eye, Heart, RotateCw } from 'lucide-react';
+import { Plus, Eye, Heart, RotateCw, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCartStore, useUIStore, useCurrencyStore, useWishlistStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
+
+interface Review {
+  id: string;
+  rating: number;
+  comment: string;
+  name: string;
+  verified?: boolean;
+}
 
 interface Product {
   id: string;
@@ -21,6 +29,7 @@ interface Product {
   limitedQty?: number | null;
   brand?: string | null;
   condition?: string;
+  reviews?: Review[];
   category?: {
     name: string;
     type?: string;
@@ -311,6 +320,31 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         <h3 className="text-white font-medium text-sm text-center group-hover:text-amber-400 transition-colors line-clamp-2 min-h-[2.5rem]">
           {product.name}
         </h3>
+
+        {/* Rating Display */}
+        {product.reviews && product.reviews.length > 0 && (
+          <div className="flex items-center justify-center gap-1.5 mt-2">
+            <div className="flex items-center gap-0.5">
+              {[1, 2, 3, 4, 5].map((star) => {
+                const avgRating = product.reviews!.reduce((sum, r) => sum + r.rating, 0) / product.reviews!.length;
+                return (
+                  <Star
+                    key={star}
+                    className={cn(
+                      "w-3.5 h-3.5",
+                      star <= Math.round(avgRating)
+                        ? "fill-amber-400 text-amber-400"
+                        : "fill-none text-white/30"
+                    )}
+                  />
+                );
+              })}
+            </div>
+            <span className="text-white/50 text-xs">
+              ({product.reviews.length})
+            </span>
+          </div>
+        )}
 
         {/* Color Options - Interactive */}
         {colors && colors.length > 0 && (

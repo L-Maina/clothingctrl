@@ -197,6 +197,30 @@ export async function POST(request: Request) {
       },
     });
 
+    // Deduct inventory for each item
+    for (const item of items) {
+      const product = await db.product.findUnique({
+        where: { id: item.productId },
+      });
+
+      if (product) {
+        // Handle limited quantity products
+        if (product.isLimited && product.limitedQty !== null) {
+          const newQty = Math.max(0, product.limitedQty - item.quantity);
+          await db.product.update({
+            where: { id: item.productId },
+            data: {
+              limitedQty: newQty,
+              // Mark as out of stock if quantity reaches 0
+              inStock: newQty > 0,
+            },
+          });
+        }
+        // For regular products, we could track stock quantity if needed
+        // Currently we just have inStock boolean, so we leave it as is
+      }
+    }
+
     // Add loyalty points
     const points = calculateLoyaltyPoints(total);
     if (points > 0 && customer.loyalty) {
