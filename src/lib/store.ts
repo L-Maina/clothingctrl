@@ -318,6 +318,8 @@ interface AuthStore {
   isLoggedIn: boolean;
   user: AuthUser | null;
   isLoginModalOpen: boolean;
+  _hasHydrated: boolean;
+  setHasHydrated: (state: boolean) => void;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (name: string, email: string, password: string, phone?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
@@ -333,6 +335,8 @@ export const useAuthStore = create<AuthStore>()(
       isLoggedIn: false,
       user: null,
       isLoginModalOpen: false,
+      _hasHydrated: false,
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
       
       login: async (email, password) => {
         try {
@@ -456,6 +460,9 @@ export const useAuthStore = create<AuthStore>()(
     {
       name: 'clothing-ctrl-auth',
       partialize: (state) => ({ isLoggedIn: state.isLoggedIn, user: state.user }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

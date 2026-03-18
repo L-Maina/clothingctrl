@@ -100,7 +100,7 @@ const returnStatusConfig: Record<string, { label: string; color: string }> = {
 
 export default function OrdersPage() {
   const router = useRouter();
-  const { isLoggedIn, user } = useAuthStore();
+  const { isLoggedIn, user, _hasHydrated } = useAuthStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
@@ -115,16 +115,21 @@ export default function OrdersPage() {
   const [cancelling, setCancelling] = useState(false);
   const { toast } = useToast();
 
-  // Redirect if not logged in
+  // Wait for hydration before checking auth
+  const [isReady, setIsReady] = useState(false);
+
   useEffect(() => {
-    if (!isLoggedIn) {
-      router.push('/');
+    if (_hasHydrated) {
+      setIsReady(true);
+      if (!isLoggedIn) {
+        router.push('/');
+      }
     }
-  }, [isLoggedIn, router]);
+  }, [_hasHydrated, isLoggedIn, router]);
 
   // Fetch orders
   useEffect(() => {
-    if (!isLoggedIn || !user?.id) return;
+    if (!isReady || !isLoggedIn || !user?.id) return;
 
     const fetchData = async () => {
       try {
@@ -153,7 +158,7 @@ export default function OrdersPage() {
     };
 
     fetchData();
-  }, [isLoggedIn, user?.id, user?.email]);
+  }, [isReady, isLoggedIn, user?.id, user?.email]);
 
   const handlePrintReceipt = (orderId: string) => {
     window.open(`/api/orders/receipt/${orderId}?print=1`, '_blank');
@@ -294,7 +299,7 @@ export default function OrdersPage() {
     }
   };
 
-  if (!isLoggedIn || !user) {
+  if (!_hasHydrated || !isReady || !isLoggedIn || !user) {
     return (
       <main className="flex-1 pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-4xl">
