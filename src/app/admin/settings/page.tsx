@@ -22,6 +22,11 @@ import {
   Award,
   Medal,
   Crown,
+  Download,
+  Upload,
+  Database,
+  AlertTriangle,
+  FileJson,
 } from 'lucide-react';
 import { broadcastSettingsUpdate } from '@/hooks/useRealtime';
 
@@ -88,6 +93,8 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -156,8 +163,72 @@ export default function AdminSettings() {
     }
   };
 
-  const updateSetting = (key: keyof StoreSettings, value: string | boolean) => {
+  const updateSetting = (key: keyof StoreSettings, value: string | boolean | number | null) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleBackup = async () => {
+    setBackingUp(true);
+    try {
+      const response = await fetch('/api/admin/backup');
+      if (!response.ok) {
+        throw new Error('Failed to create backup');
+      }
+      
+      // Get the blob and download it
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `clothingctrl-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Backup failed:', error);
+      alert('Failed to create backup. Please try again.');
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
+  const handleRestore = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setRestoring(true);
+    try {
+      const text = await file.text();
+      const backup = JSON.parse(text);
+      
+      // Confirm before restoring
+      if (!confirm('This will overwrite your current data. Are you sure you want to restore from this backup?')) {
+        setRestoring(false);
+        return;
+      }
+
+      const response = await fetch('/api/admin/backup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: backup.data, overwrite: true }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to restore backup');
+      }
+
+      const result = await response.json();
+      alert(`Backup restored successfully!\n\nCategories: ${result.results?.categories || 0}\nProducts: ${result.results?.products || 0}`);
+      window.location.reload();
+    } catch (error) {
+      console.error('Restore failed:', error);
+      alert('Failed to restore backup. Make sure the file is a valid ClothingCtrl backup.');
+    } finally {
+      setRestoring(false);
+      // Reset file input
+      event.target.value = '';
+    }
   };
 
   if (loading) {
@@ -599,6 +670,98 @@ export default function AdminSettings() {
                     onChange={(e) => updateSetting('loyaltyPlatinumThreshold', parseInt(e.target.value) || 0)}
                     className="bg-zinc-800 border-white/10 text-white"
                   />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Backup & Export Section */}
+      <div className="mt-6">
+        <Card className="bg-zinc-900 border-white/10">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-orange-400/10 rounded-lg flex items-center justify-center">
+                <Database className="w-5 h-5 text-orange-400" />
+              </div>
+              <div>
+                <CardTitle className="text-white">Backup & Export</CardTitle>
+                <CardDescription className="text-white/40">
+                  Export your store data or restore from a backup
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Export/Backup */}
+              <div className="p-4 bg-zinc-800/50 rounded-lg border border-white/5">
+                <div className="flex items-center gap-3 mb-3">
+                  <Download className="w-5 h-5 text-amber-400" />
+                  <h3 className="text-white font-medium">Create Backup</h3>
+                </div>
+                <p className="text-white/40 text-sm mb-4">
+                  Download a complete backup of your store data including products, orders, customers, and settings.
+                </p>
+                <Button
+                  onClick={handleBackup}
+                  disabled={backingUp}
+                  className="bg-amber-400 hover:bg-amber-300 text-black font-bold"
+                >
+                  {backingUp ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileJson className="w-4 h-4 mr-2" />
+                  )}
+                  {backingUp ? 'Creating Backup...' : 'Download Backup'}
+                </Button>
+              </div>
+
+              {/* Restore */}
+              <div className="p-4 bg-zinc-800/50 rounded-lg border border-white/5">
+                <div className="flex items-center gap-3 mb-3">
+                  <Upload className="w-5 h-5 text-blue-400" />
+                  <h3 className="text-white font-medium">Restore from Backup</h3>
+                </div>
+                <p className="text-white/40 text-sm mb-4">
+                  Restore your store from a previously created backup file. This will overwrite current data.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleRestore}
+                    className="hidden"
+                    id="backup-restore"
+                    disabled={restoring}
+                  />
+                  <Button
+                    variant="outline"
+                    className="border-blue-400/50 text-blue-400 hover:bg-blue-400/10"
+                    disabled={restoring}
+                    onClick={() => document.getElementById('backup-restore')?.click()}
+                  >
+                    {restoring ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4 mr-2" />
+                    )}
+                    {restoring ? 'Restoring...' : 'Select Backup File'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Warning */}
+            <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-yellow-400 text-sm font-medium">Important</p>
+                  <p className="text-white/40 text-xs mt-1">
+                    Backups contain sensitive data. Store them securely. Restoring a backup will overwrite current data and cannot be undone.
+                  </p>
                 </div>
               </div>
             </div>

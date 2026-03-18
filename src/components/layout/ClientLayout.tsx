@@ -7,6 +7,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { AnnouncementBanner } from '@/components/layout/AnnouncementBanner';
 import { CookieConsent } from '@/components/layout/CookieConsent';
+import { useBannerHeight } from '@/components/layout/AnnouncementBanner';
 
 // Lazy load modal/drawer components - only load when needed
 const CartDrawer = dynamic(
@@ -40,6 +41,7 @@ interface ClientLayoutProps {
 
 export function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname();
+  const bannerHeight = useBannerHeight();
   
   // Don't wrap admin pages with customer layout
   const isAdminPage = pathname?.startsWith('/admin');
@@ -47,6 +49,10 @@ export function ClientLayout({ children }: ClientLayoutProps) {
   if (isAdminPage) {
     return <>{children}</>;
   }
+
+  // Navbar height: 64px on mobile (h-16), 80px on desktop (lg:h-20)
+  // Add banner height when visible
+  const headerOffset = bannerHeight + 64; // Base offset on mobile
   
   return (
     <div className="min-h-screen bg-black flex flex-col">
@@ -63,8 +69,8 @@ export function ClientLayout({ children }: ClientLayoutProps) {
         <WishlistDrawer />
       </Suspense>
       
-      {/* Page Content */}
-      <div className="flex-1">
+      {/* Page Content - with padding for fixed header */}
+      <div className="flex-1 pt-16 lg:pt-20" style={{ paddingTop: `${headerOffset}px` }}>
         {children}
       </div>
       
