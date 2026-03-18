@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 
 interface NotificationItem {
   id: string;
-  type: 'order' | 'customer' | 'product' | 'subscriber' | 'review' | 'community';
+  type: 'order' | 'customer' | 'product' | 'subscriber' | 'review' | 'community' | 'return';
   message: string;
   time: string;
   read: boolean;
@@ -223,6 +223,46 @@ export async function GET() {
         time: 'Pending',
         read: false,
         link: `/admin/community`,
+      });
+    }
+
+    // Get pending return requests
+    const pendingReturns = await db.orderReturn.findMany({
+      where: {
+        status: 'PENDING',
+        createdAt: {
+          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+
+    pendingReturns.forEach((returnReq) => {
+      notifications.push({
+        id: `return-${returnReq.id}`,
+        type: 'return',
+        message: `New return request for order #${returnReq.orderNumber}`,
+        time: getTimeAgo(returnReq.createdAt),
+        read: false,
+        link: `/admin/returns`,
+        orderId: returnReq.orderId,
+      });
+    });
+
+    // Get total pending returns count
+    const totalPendingReturns = await db.orderReturn.count({
+      where: { status: 'PENDING' },
+    });
+
+    if (totalPendingReturns > 0) {
+      notifications.push({
+        id: `returns-pending-count`,
+        type: 'return',
+        message: `${totalPendingReturns} return request${totalPendingReturns > 1 ? 's' : ''} pending review`,
+        time: 'Pending',
+        read: false,
+        link: `/admin/returns`,
       });
     }
 

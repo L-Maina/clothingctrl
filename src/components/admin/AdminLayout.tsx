@@ -65,7 +65,6 @@ const navigation = [
   { name: 'Community', href: '/admin/community', icon: ImageIcon },
   { name: 'FAQ', href: '/admin/faq', icon: HelpCircle },
   { name: 'Social', href: '/admin/social', icon: Share2 },
-  { name: 'Notifications', href: '/admin/notifications', icon: Bell },
   { name: 'Analytics', href: '/admin/analytics', icon: TrendingUp },
   { name: 'Export', href: '/admin/export', icon: Download },
   { name: 'Admins', href: '/admin/admins', icon: Shield },
@@ -74,7 +73,7 @@ const navigation = [
 
 interface Notification {
   id: string;
-  type: 'order' | 'customer' | 'product' | 'subscriber' | 'review' | 'community';
+  type: 'order' | 'customer' | 'product' | 'subscriber' | 'review' | 'community' | 'return';
   message: string;
   time: string;
   read: boolean;
