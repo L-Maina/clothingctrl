@@ -86,7 +86,7 @@ export default function AccountPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab') || 'overview';
-  const { isLoggedIn, user, logout, fetchCurrentUser, updateProfile } = useAuthStore();
+  const { isLoggedIn, user, logout, fetchCurrentUser, updateUser } = useAuthStore();
   const [stats, setStats] = useState<CustomerStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [saving, setSaving] = useState(false);
