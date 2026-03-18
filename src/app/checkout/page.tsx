@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, CreditCard, Truck, Shield, Check, Loader2, MapPin, Gift, Download, X, Sparkles, AlertCircle, Tag, Percent } from 'lucide-react';
+import { ArrowLeft, CreditCard, Truck, Shield, Check, Loader2, MapPin, Gift, Download, X, Sparkles, AlertCircle, Tag, Percent, Store, Package } from 'lucide-react';
 import { SiVisa, SiMastercard, SiPaypal } from 'react-icons/si';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -59,6 +59,7 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card' | 'paypal'>('mpesa');
+  const [shippingMethod, setShippingMethod] = useState<'delivery' | 'pickup'>('delivery');
   const [isGuestCheckout, setIsGuestCheckout] = useState(false);
   const [showGuestPrompt, setShowGuestPrompt] = useState(false);
   const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
@@ -86,11 +87,17 @@ export default function CheckoutPage() {
     shippingKenya: number;
     shippingInternational: number;
     shippingFreeThreshold: number | null;
+    storeAddress: string;
+    storeCity: string;
+    storePhone: string;
   }>({
     shippingNairobi: 200,
     shippingKenya: 500,
     shippingInternational: 2000,
     shippingFreeThreshold: null,
+    storeAddress: '',
+    storeCity: 'Nairobi',
+    storePhone: '',
   });
   
   // Location autocomplete state
@@ -127,6 +134,9 @@ export default function CheckoutPage() {
             shippingKenya: data.settings.shippingKenya ?? 500,
             shippingInternational: data.settings.shippingInternational ?? 2000,
             shippingFreeThreshold: data.settings.shippingFreeThreshold ?? null,
+            storeAddress: data.settings.addressLine1 ?? '',
+            storeCity: data.settings.city ?? 'Nairobi',
+            storePhone: data.settings.storePhone ?? '',
           });
         }
       } catch (error) {
@@ -183,6 +193,11 @@ export default function CheckoutPage() {
 
   // Calculate shipping based on location and settings
   const calculateShipping = () => {
+    // Free shipping for pickup
+    if (shippingMethod === 'pickup') {
+      return 0;
+    }
+    
     const cityLower = formData.city.toLowerCase().trim();
     const countryLower = formData.country.toLowerCase().trim();
     
@@ -277,7 +292,15 @@ export default function CheckoutPage() {
           color: item.color,
           size: item.size,
         })),
-        shippingAddress: {
+        shippingAddress: shippingMethod === 'pickup' ? {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          address: 'PICKUP_AT_STORE',
+          city: shippingSettings.storeCity,
+          country: 'Kenya',
+          postalCode: '',
+          phone: formData.phone,
+        } : {
           firstName: formData.firstName,
           lastName: formData.lastName,
           address: formData.address,
@@ -286,6 +309,7 @@ export default function CheckoutPage() {
           postalCode: formData.postalCode,
           phone: formData.phone,
         },
+        shippingMethod,
         paymentMethod,
         isGuestOrder: !isLoggedIn,
         discountCode: appliedDiscount?.code || null,
@@ -576,22 +600,97 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Shipping */}
+              {/* Shipping Method */}
               <div className="bg-zinc-900 border border-white/10 p-6">
                 <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                  <Truck className="w-5 h-5 text-amber-400" />
-                  Shipping Address
+                  <Package className="w-5 h-5 text-amber-400" />
+                  Shipping Method
                 </h2>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    name="address"
-                    placeholder="Street Address"
-                    required
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    className="sm:col-span-2 bg-zinc-800 border border-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-amber-400"
-                  />
+                
+                {/* Shipping Method Selection */}
+                <div className="grid sm:grid-cols-2 gap-3 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setShippingMethod('delivery')}
+                    className={cn(
+                      "p-4 border text-left transition-all",
+                      shippingMethod === 'delivery'
+                        ? "border-amber-400 bg-amber-400/10"
+                        : "border-white/10 hover:border-white/30"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Truck className={cn(
+                        "w-6 h-6",
+                        shippingMethod === 'delivery' ? "text-amber-400" : "text-white/40"
+                      )} />
+                      <div>
+                        <p className="text-white font-medium">Delivery</p>
+                        <p className="text-white/40 text-sm">We ship to your address</p>
+                      </div>
+                    </div>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setShippingMethod('pickup')}
+                    className={cn(
+                      "p-4 border text-left transition-all",
+                      shippingMethod === 'pickup'
+                        ? "border-amber-400 bg-amber-400/10"
+                        : "border-white/10 hover:border-white/30"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Store className={cn(
+                        "w-6 h-6",
+                        shippingMethod === 'pickup' ? "text-amber-400" : "text-white/40"
+                      )} />
+                      <div>
+                        <p className="text-white font-medium">Pick Up at Store</p>
+                        <p className="text-white/40 text-sm">Free - Collect in person</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+                
+                {/* Pickup Info */}
+                {shippingMethod === 'pickup' && (
+                  <div className="bg-green-900/20 border border-green-500/20 p-4 mb-4">
+                    <p className="text-green-400 text-sm mb-2 font-medium">📍 Pick up at our store</p>
+                    <p className="text-white/60 text-sm">
+                      {shippingSettings.storeAddress || 'Contact us for store address'}
+                      {shippingSettings.storeCity && `, ${shippingSettings.storeCity}`}
+                    </p>
+                    {shippingSettings.storePhone && (
+                      <p className="text-white/40 text-sm mt-1">
+                        📞 {shippingSettings.storePhone}
+                      </p>
+                    )}
+                    <p className="text-green-400/80 text-xs mt-2">
+                      You'll be notified when your order is ready for pickup.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Shipping Address - Only for Delivery */}
+              {shippingMethod === 'delivery' && (
+                <div className="bg-zinc-900 border border-white/10 p-6">
+                  <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <Truck className="w-5 h-5 text-amber-400" />
+                    Shipping Address
+                  </h2>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <input
+                      type="text"
+                      name="address"
+                      placeholder="Street Address"
+                      required
+                      value={formData.address}
+                      onChange={handleInputChange}
+                      className="sm:col-span-2 bg-zinc-800 border border-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-amber-400"
+                    />
                   
                   {/* City with Autocomplete */}
                   <div className="relative" ref={cityInputRef}>
@@ -678,6 +777,7 @@ export default function CheckoutPage() {
                   </p>
                 </div>
               </div>
+              )}
 
               {/* Payment */}
               <div className="bg-zinc-900 border border-white/10 p-6">

@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 
 interface NotificationItem {
   id: string;
-  type: 'order' | 'customer' | 'product' | 'subscriber' | 'review' | 'community' | 'return';
+  type: 'order' | 'customer' | 'product' | 'subscriber' | 'review' | 'community' | 'return' | 'cancellation';
   message: string;
   time: string;
   read: boolean;
@@ -53,6 +53,51 @@ export async function GET() {
         orderId: order.id,
       });
     });
+
+    // Get recently cancelled orders (last 7 days)
+    const cancelledOrders = await db.order.findMany({
+      where: {
+        status: 'CANCELLED',
+        updatedAt: {
+          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 5,
+    });
+
+    cancelledOrders.forEach((order) => {
+      notifications.push({
+        id: `order-cancelled-${order.id}`,
+        type: 'cancellation',
+        message: `Order #${order.orderNumber} was cancelled`,
+        time: getTimeAgo(order.updatedAt),
+        read: false,
+        link: `/admin/orders`,
+        orderId: order.id,
+      });
+    });
+
+    // Get cancelled orders count for the day
+    const cancelledTodayCount = await db.order.count({
+      where: {
+        status: 'CANCELLED',
+        updatedAt: {
+          gte: new Date(new Date().setHours(0, 0, 0, 0)),
+        },
+      },
+    });
+
+    if (cancelledTodayCount > 0) {
+      notifications.push({
+        id: `cancelled-today-count`,
+        type: 'cancellation',
+        message: `${cancelledTodayCount} order${cancelledTodayCount > 1 ? 's' : ''} cancelled today`,
+        time: 'Today',
+        read: false,
+        link: `/admin/orders`,
+      });
+    }
 
     // Get recent customers (last 7 days)
     const recentCustomers = await db.customer.findMany({
@@ -269,16 +314,18 @@ export async function GET() {
     // Sort by time (most recent first) and limit
     const sortedNotifications = notifications
       .sort((a, b) => {
-        // Priority: pending returns, low stock, out of stock, then by time
+        // Priority: pending returns, cancellations, low stock, out of stock, then by time
         if (a.type === 'return' && a.time === 'Pending') return -1;
         if (b.type === 'return' && b.time === 'Pending') return 1;
+        if (a.type === 'cancellation') return -1;
+        if (b.type === 'cancellation') return 1;
         if (a.time.includes('stock')) return -1;
         if (b.time.includes('stock')) return 1;
         if (a.time === 'Pending') return -1;
         if (b.time === 'Pending') return 1;
         return 0;
       })
-      .slice(0, 15);
+      .slice(0, 20);
 
     return NextResponse.json({ notifications: sortedNotifications });
   } catch (error) {

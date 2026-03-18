@@ -31,6 +31,7 @@ import {
   HelpCircle,
   Download,
   Shield,
+  XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -73,7 +74,7 @@ const navigation = [
 
 interface Notification {
   id: string;
-  type: 'order' | 'customer' | 'product' | 'subscriber' | 'review' | 'community' | 'return';
+  type: 'order' | 'customer' | 'product' | 'subscriber' | 'review' | 'community' | 'return' | 'cancellation';
   message: string;
   time: string;
   read: boolean;
@@ -191,6 +192,10 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
         return <MessageSquare className="w-4 h-4 text-yellow-400" />;
       case 'community':
         return <ImageIcon className="w-4 h-4 text-pink-400" />;
+      case 'return':
+        return <ArrowLeftRight className="w-4 h-4 text-orange-400" />;
+      case 'cancellation':
+        return <XCircle className="w-4 h-4 text-red-400" />;
       default:
         return <Bell className="w-4 h-4 text-white/40" />;
     }

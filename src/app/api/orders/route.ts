@@ -132,8 +132,12 @@ export async function POST(request: Request) {
     // Calculate shipping based on location and settings
     let shipping: number;
     
-    // Free shipping threshold check
-    if (shippingFreeThreshold && subtotal >= shippingFreeThreshold) {
+    // Check if pickup at store
+    const isPickup = shippingAddress.address === 'PICKUP_AT_STORE' || body.shippingMethod === 'pickup';
+    
+    if (isPickup) {
+      shipping = 0;
+    } else if (shippingFreeThreshold && subtotal >= shippingFreeThreshold) {
       shipping = 0;
     } else {
       const cityLower = (shippingAddress.city || '').toLowerCase().trim();

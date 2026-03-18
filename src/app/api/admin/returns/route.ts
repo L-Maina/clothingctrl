@@ -73,6 +73,15 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Return ID is required' }, { status: 400 });
     }
 
+    // Get current return request
+    const currentReturn = await db.orderReturn.findUnique({
+      where: { id },
+    });
+
+    if (!currentReturn) {
+      return NextResponse.json({ error: 'Return not found' }, { status: 404 });
+    }
+
     const updateData: any = {};
     if (status) updateData.status = status;
     if (refundMethod) updateData.refundMethod = refundMethod;
@@ -83,6 +92,32 @@ export async function PUT(request: NextRequest) {
       where: { id },
       data: updateData,
     });
+
+    // Restore inventory when return is completed
+    if (status === 'COMPLETED' && currentReturn.status !== 'COMPLETED') {
+      try {
+        const items = JSON.parse(currentReturn.items);
+        
+        for (const item of items) {
+          const product = await db.product.findUnique({
+            where: { id: item.productId },
+          });
+          
+          if (product && product.isLimited && product.limitedQty !== null) {
+            // Restore the quantity
+            await db.product.update({
+              where: { id: item.productId },
+              data: {
+                limitedQty: { increment: item.quantity },
+                inStock: true, // Make sure it's back in stock
+              },
+            });
+          }
+        }
+      } catch (parseError) {
+        console.error('Error restoring inventory for return:', parseError);
+      }
+    }
 
     return NextResponse.json({ return: returnRequest });
   } catch (error) {
